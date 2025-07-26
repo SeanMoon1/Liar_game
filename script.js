@@ -1,3 +1,69 @@
+// 전역 방 관리 시스템
+class RoomManager {
+    constructor() {
+        this.rooms = new Map(); // 방 코드 -> 방 정보
+    }
+
+    // 방 생성
+    createRoom(roomCode, hostName) {
+        const room = {
+            code: roomCode,
+            host: hostName,
+            players: [{ name: hostName, isHost: true }],
+            gameStarted: false,
+            topic: '',
+            liar: null,
+            messages: []
+        };
+        this.rooms.set(roomCode, room);
+        return room;
+    }
+
+    // 방 참가
+    joinRoom(roomCode, playerName) {
+        const room = this.rooms.get(roomCode);
+        if (!room) {
+            return null; // 방이 존재하지 않음
+        }
+        if (room.gameStarted) {
+            return null; // 게임이 이미 시작됨
+        }
+        
+        // 이미 같은 이름의 플레이어가 있는지 확인
+        const existingPlayer = room.players.find(p => p.name === playerName);
+        if (existingPlayer) {
+            return null; // 같은 이름의 플레이어가 이미 있음
+        }
+
+        room.players.push({ name: playerName, isHost: false });
+        return room;
+    }
+
+    // 방 정보 가져오기
+    getRoom(roomCode) {
+        return this.rooms.get(roomCode);
+    }
+
+    // 방 삭제
+    deleteRoom(roomCode) {
+        this.rooms.delete(roomCode);
+    }
+
+    // 플레이어 제거
+    removePlayer(roomCode, playerName) {
+        const room = this.rooms.get(roomCode);
+        if (room) {
+            room.players = room.players.filter(p => p.name !== playerName);
+            if (room.players.length === 0) {
+                this.deleteRoom(roomCode);
+            }
+        }
+    }
+}
+
+// 전역 방 매니저 인스턴스
+const roomManager = new RoomManager();
+
 // 게임 상태 관리
 class LiarGame {
     constructor() {
@@ -19,6 +85,31 @@ class LiarGame {
         
         this.initializeEventListeners();
         this.loadKeywords();
+        
+        // 주기적으로 방 정보 업데이트
+        this.startRoomUpdateInterval();
+    }
+
+    // 방 정보 업데이트 인터벌 시작
+    startRoomUpdateInterval() {
+        setInterval(() => {
+            if (this.roomId && this.currentScreen === 'waiting') {
+                this.updateRoomInfo();
+            }
+        }, 2000); // 2초마다 업데이트
+    }
+
+    // 방 정보 업데이트
+    updateRoomInfo() {
+        const room = roomManager.getRoom(this.roomId);
+        if (room) {
+            this.players = room.players;
+            this.initializeWaitingRoom();
+        } else {
+            // 방이 삭제된 경우
+            alert('방이 삭제되었습니다.');
+            this.leaveRoom();
+        }
     }
 
     // 키워드 데이터 로드
@@ -190,8 +281,16 @@ class LiarGame {
     // 방 생성
     createRoom() {
         this.roomId = this.generateRoomId();
+        
+        // 방 매니저에 방 생성
+        const room = roomManager.createRoom(this.roomId, this.playerName);
+        if (!room) {
+            alert('방 생성에 실패했습니다. 다시 시도해주세요.');
+            return;
+        }
+        
         this.isHost = true;
-        this.players = [{ name: this.playerName, isHost: true }];
+        this.players = room.players;
         
         // 방 코드 표시
         document.getElementById('room-code-display').textContent = this.roomId;
@@ -206,13 +305,26 @@ class LiarGame {
 
     // 기존 방 참가
     joinExistingRoom() {
-        this.isHost = false;
-        this.players = [
-            { name: '방장', isHost: true },
-            { name: this.playerName, isHost: false }
-        ];
+        // 방 매니저에서 방 정보 가져오기
+        const room = roomManager.getRoom(this.roomId);
+        if (!room) {
+            alert('존재하지 않는 방입니다.');
+            this.showScreen('room-select');
+            return;
+        }
         
-        // 방 링크 표시 (기존 방에 참가한 경우에도 링크를 볼 수 있도록)
+        // 방에 참가
+        const joinedRoom = roomManager.joinRoom(this.roomId, this.playerName);
+        if (!joinedRoom) {
+            alert('방 참가에 실패했습니다. 같은 이름의 플레이어가 있거나 게임이 이미 시작되었을 수 있습니다.');
+            this.showScreen('room-select');
+            return;
+        }
+        
+        this.isHost = false;
+        this.players = joinedRoom.players;
+        
+        // 방 링크 표시
         const roomLink = `${window.location.origin}${window.location.pathname}?room=${this.roomId}`;
         document.getElementById('share-link').value = roomLink;
         document.getElementById('room-link').classList.remove('hidden');
@@ -264,7 +376,8 @@ class LiarGame {
 
     // 대기실 초기화
     initializeWaitingRoom() {
-        document.getElementById('host-name').textContent = this.players.find(p => p.isHost)?.name || '방장';
+        const host = this.players.find(p => p.isHost);
+        document.getElementById('host-name').textContent = host?.name || '방장';
         document.getElementById('player-count').textContent = this.players.length;
         
         // 방 링크 표시 (대기실에서도 링크를 볼 수 있도록)
@@ -279,12 +392,29 @@ class LiarGame {
         const playersList = document.getElementById('players-list');
         playersList.innerHTML = '';
         
-        this.players.forEach(player => {
+        // 방장을 먼저 표시
+        const hostPlayer = this.players.find(p => p.isHost);
+        if (hostPlayer) {
+            const hostCard = document.createElement('div');
+            hostCard.className = 'player-card host';
+            hostCard.innerHTML = `
+                <div class="player-info">
+                    <span class="player-name">👑 ${hostPlayer.name}</span>
+                </div>
+                <span class="player-status">방장</span>
+            `;
+            playersList.appendChild(hostCard);
+        }
+        
+        // 일반 참가자들을 표시
+        this.players.filter(p => !p.isHost).forEach(player => {
             const playerCard = document.createElement('div');
-            playerCard.className = `player-card ${player.isHost ? 'host' : ''}`;
+            playerCard.className = 'player-card';
             playerCard.innerHTML = `
-                <strong>${player.name}</strong>
-                ${player.isHost ? ' (방장)' : ''}
+                <div class="player-info">
+                    <span class="player-name">👤 ${player.name}</span>
+                </div>
+                <span class="player-status">참가자</span>
             `;
             playersList.appendChild(playerCard);
         });
@@ -296,6 +426,10 @@ class LiarGame {
 
     // 방 나가기
     leaveRoom() {
+        if (this.roomId && this.playerName) {
+            roomManager.removePlayer(this.roomId, this.playerName);
+        }
+        
         this.roomId = '';
         this.isHost = false;
         this.players = [];
@@ -328,9 +462,21 @@ class LiarGame {
             return;
         }
 
+        // 방 매니저에서 방 정보 업데이트
+        const room = roomManager.getRoom(this.roomId);
+        if (!room) {
+            alert('방을 찾을 수 없습니다.');
+            return;
+        }
+
+        // 게임 시작 상태로 변경
+        room.gameStarted = true;
+        room.topic = this.selectedTopic;
+
         // 라이어 선정
         const liarIndex = Math.floor(Math.random() * this.players.length);
         const liar = this.players[liarIndex];
+        room.liar = liar.name;
 
         // 키워드 설정
         const topicKeywords = this.keywords[this.selectedTopic] || this.keywords.general;

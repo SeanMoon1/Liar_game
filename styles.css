@@ -159,10 +159,12 @@ input[type="text"]:focus {
 }
 
 .players-list {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-    gap: 15px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
     margin: 20px 0;
+    max-height: 300px;
+    overflow-y: auto;
 }
 
 .player-card {
@@ -170,11 +172,45 @@ input[type="text"]:focus {
     padding: 15px;
     border-radius: 8px;
     border-left: 4px solid #667eea;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    transition: all 0.3s ease;
+}
+
+.player-card:hover {
+    transform: translateX(5px);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
 }
 
 .player-card.host {
     border-left-color: #ffc107;
     background: #fff3cd;
+    font-weight: bold;
+}
+
+.player-card .player-info {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.player-card .player-name {
+    font-weight: 500;
+    color: #333;
+}
+
+.player-card .player-status {
+    font-size: 0.8rem;
+    color: #666;
+    padding: 2px 8px;
+    border-radius: 12px;
+    background: #e9ecef;
+}
+
+.player-card.host .player-status {
+    background: #ffc107;
+    color: #333;
 }
 
 .topics-grid {
@@ -436,5 +472,19 @@ input[type="text"]:focus {
     
     .room-option {
         padding: 20px;
+    }
+    
+    .players-list {
+        max-height: 200px;
+    }
+    
+    .player-card {
+        padding: 12px;
+    }
+    
+    .player-card .player-info {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 5px;
     }
 } 
