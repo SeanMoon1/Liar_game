@@ -102,6 +102,8 @@
 - **HTML5**: 게임 구조 및 마크업
 - **CSS3**: 스타일링 및 반응형 디자인
 - **JavaScript (ES6+)**: 게임 로직 및 상호작용
+- **Firebase Realtime Database**: 실시간 멀티플레이어 데이터 동기화
+- **Firebase Hosting**: 웹 호스팅 서비스
 
 ## 📱 반응형 디자인
 
@@ -116,46 +118,101 @@
 
 ## 🔧 설치 및 실행
 
-## ⚙️ 환경변수 설정
 
-프로젝트에서 사용하는 환경변수들입니다:
-
-| 변수명 | 기본값 | 설명 |
-|--------|--------|------|
-| `MAX_ROOMS` | 100 | 최대 생성 가능한 방 개수 |
-| `ROOM_TIMEOUT` | 3600000 | 방 자동 삭제 시간 (밀리초, 1시간) |
-| `MAX_PLAYERS_PER_ROOM` | 10 | 방당 최대 플레이어 수 |
-| `NODE_ENV` | development | 실행 환경 (development/production) |
-| `LOG_LEVEL` | info | 로그 레벨 (debug/info/warn/error) |
-| `PORT` | 3000 | 서버 포트 (로컬 개발용) |
-| `HOST` | localhost | 서버 호스트 (로컬 개발용) |
-| `GAME_TIMEOUT` | 300000 | 게임 타임아웃 (밀리초, 5분) |
-| `CORS_ORIGIN` | * | CORS 허용 도메인 |
 
 ### 로컬 개발
 1. 프로젝트를 다운로드합니다.
 2. `npm install` 명령어로 의존성을 설치합니다.
-3. 환경변수 설정 (선택사항):
-   ```bash
-   # .env 파일 생성
-   cp env.example .env
-   # .env 파일을 편집하여 원하는 설정으로 변경
-   ```
-4. `npm run dev` 명령어로 개발 서버를 실행합니다.
-5. 브라우저에서 `http://localhost:3000`으로 접속합니다.
+3. `npm run dev` 명령어로 개발 서버를 실행합니다.
+4. 브라우저에서 `http://localhost:3000`으로 접속합니다.
 
-### Vercel 배포
-1. [Vercel](https://vercel.com)에 가입합니다.
-2. GitHub 저장소를 연결합니다.
-3. 환경변수 설정 (선택사항):
-   - Vercel 대시보드 → Settings → Environment Variables
-   - `env.example` 파일의 변수들을 필요에 따라 설정
-4. 자동으로 배포가 완료됩니다.
-5. 제공된 URL로 접속하여 게임을 즐깁니다.
+### Firebase 배포
+1. [Firebase](https://firebase.google.com)에 가입합니다.
+2. 새 프로젝트를 생성합니다.
+3. Realtime Database를 활성화합니다.
+4. Firebase CLI 설치 및 로그인:
+   ```bash
+   npm install -g firebase-tools
+   firebase login
+   ```
+5. 프로젝트 초기화:
+   ```bash
+   firebase init
+   ```
+6. Firebase 설정 파일 생성:
+   ```bash
+   # 예시 파일을 실제 설정 파일로 복사
+   cp public/firebase-config.example.js public/firebase-config.js
+   ```
+7. `public/firebase-config.js` 파일의 설정을 Firebase 콘솔에서 가져온 실제 값으로 교체합니다.
+8. 배포:
+   ```bash
+   firebase deploy
+   ```
+9. 제공된 URL로 접속하여 게임을 즐깁니다.
 
 ### 정적 호스팅 (제한적)
 1. `public` 폴더의 파일들을 웹 서버에 업로드합니다.
 2. 단, 멀티플레이어 기능은 작동하지 않습니다.
+
+## 🔒 보안 주의사항
+
+### API 키 보안
+- **절대 GitHub에 API 키를 공개하지 마세요!**
+- `public/firebase-config.js` 파일은 `.gitignore`에 포함되어 있습니다.
+- 실제 설정 파일은 로컬에서만 관리하고, GitHub에는 예시 파일만 업로드됩니다.
+
+### Firebase 보안 규칙
+- Realtime Database 보안 규칙을 적절히 설정하세요.
+- 프로덕션 환경에서는 인증을 추가하는 것을 권장합니다.
+
+## 🔥 Firebase 배포 상세 가이드
+
+### 1. Firebase 프로젝트 생성
+1. [Firebase Console](https://console.firebase.google.com)에 접속
+2. "프로젝트 추가" 클릭
+3. 프로젝트 이름 입력 (예: `liar-game`)
+4. Google Analytics 설정 (선택사항)
+5. 프로젝트 생성 완료
+
+### 2. Realtime Database 설정
+1. 왼쪽 메뉴에서 "Realtime Database" 선택
+2. "데이터베이스 만들기" 클릭
+3. 보안 규칙 선택: "테스트 모드에서 시작"
+4. 데이터베이스 위치 선택 (가까운 지역)
+
+### 3. Hosting 설정
+1. 왼쪽 메뉴에서 "Hosting" 선택
+2. "시작하기" 클릭
+3. "웹 앱에 Firebase 추가" 클릭
+4. 앱 닉네임 입력 (예: `liar-game-web`)
+5. "앱 등록" 클릭
+
+### 4. 설정 파일 업데이트
+1. Firebase 콘솔에서 앱 설정 복사
+2. `public/firebase-config.js` 파일의 설정 교체:
+   ```javascript
+   const firebaseConfig = {
+     apiKey: "실제_API_KEY",
+     authDomain: "실제_PROJECT_ID.firebaseapp.com",
+     databaseURL: "https://실제_PROJECT_ID-default-rtdb.firebaseio.com",
+     projectId: "실제_PROJECT_ID",
+     storageBucket: "실제_PROJECT_ID.appspot.com",
+     messagingSenderId: "실제_SENDER_ID",
+     appId: "실제_APP_ID"
+   };
+   ```
+
+### 5. 로컬 테스트
+```bash
+npm install
+firebase serve
+```
+
+### 6. 배포
+```bash
+firebase deploy
+```
 
 ## 📝 라이선스
 

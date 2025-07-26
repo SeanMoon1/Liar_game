@@ -1,26 +1,28 @@
-// API 기반 방 관리 시스템
+// Firebase Realtime Database 기반 방 관리 시스템
 class RoomManager {
     constructor() {
-        this.baseUrl = '/api';
+        this.database = firebase.database();
+        this.roomsRef = this.database.ref('rooms');
+        this.messagesRef = this.database.ref('messages');
     }
 
     // 방 생성
     async createRoom(roomCode, hostName) {
         try {
-            const response = await fetch(`${this.baseUrl}/rooms`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({ roomCode, hostName })
-            });
-            
-            const data = await response.json();
-            if (data.success) {
-                return data.room;
-            } else {
-                throw new Error(data.error);
-            }
+            const roomData = {
+                code: roomCode,
+                host: hostName,
+                players: [{ name: hostName, isHost: true }],
+                gameStarted: false,
+                topic: '',
+                liar: null,
+                messages: [],
+                createdAt: firebase.database.ServerValue.TIMESTAMP,
+                maxPlayers: 10
+            };
+
+            await this.roomsRef.child(roomCode).set(roomData);
+            return roomData;
         } catch (error) {
             console.error('방 생성 실패:', error);
             return null;
@@ -30,36 +32,44 @@ class RoomManager {
     // 방 참가
     async joinRoom(roomCode, playerName) {
         try {
-            const response = await fetch(`${this.baseUrl}/join`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({ roomCode, playerName })
-            });
+            const roomRef = this.roomsRef.child(roomCode);
+            const snapshot = await roomRef.once('value');
             
-            const data = await response.json();
-            if (data.success) {
-                return data.room;
-            } else {
-                throw new Error(data.error);
+            if (!snapshot.exists()) {
+                throw new Error('존재하지 않는 방입니다.');
             }
+
+            const room = snapshot.val();
+            
+            if (room.gameStarted) {
+                throw new Error('게임이 이미 시작되었습니다.');
+            }
+
+            if (room.players.length >= room.maxPlayers) {
+                throw new Error('방 인원이 가득 찼습니다.');
+            }
+
+            const existingPlayer = room.players.find(p => p.name === playerName);
+            if (existingPlayer) {
+                throw new Error('같은 이름의 플레이어가 이미 있습니다.');
+            }
+
+            // 플레이어 추가
+            room.players.push({ name: playerName, isHost: false });
+            await roomRef.update({ players: room.players });
+            
+            return room;
         } catch (error) {
             console.error('방 참가 실패:', error);
-            return null;
+            throw error;
         }
     }
 
     // 방 정보 가져오기
     async getRoom(roomCode) {
         try {
-            const response = await fetch(`${this.baseUrl}/rooms?roomCode=${roomCode}`);
-            const data = await response.json();
-            if (data.success) {
-                return data.room;
-            } else {
-                return null;
-            }
+            const snapshot = await this.roomsRef.child(roomCode).once('value');
+            return snapshot.exists() ? snapshot.val() : null;
         } catch (error) {
             console.error('방 정보 조회 실패:', error);
             return null;
@@ -69,15 +79,97 @@ class RoomManager {
     // 플레이어 제거
     async removePlayer(roomCode, playerName) {
         try {
-            const response = await fetch(`${this.baseUrl}/join?roomCode=${roomCode}&playerName=${playerName}`, {
-                method: 'DELETE'
+            const roomRef = this.roomsRef.child(roomCode);
+            const snapshot = await roomRef.once('value');
+            
+            if (!snapshot.exists()) {
+                return false;
+            }
+
+            const room = snapshot.val();
+            room.players = room.players.filter(p => p.name !== playerName);
+
+            if (room.players.length === 0) {
+                // 방이 비면 삭제
+                await roomRef.remove();
+                return true;
+            }
+
+            // 방장이 나간 경우 새로운 방장 지정
+            if (room.host === playerName) {
+                room.host = room.players[0].name;
+                room.players[0].isHost = true;
+            }
+
+            await roomRef.update({ 
+                players: room.players,
+                host: room.host
             });
             
-            const data = await response.json();
-            return data.success;
+            return true;
         } catch (error) {
             console.error('플레이어 제거 실패:', error);
             return false;
+        }
+    }
+
+    // 실시간 방 정보 구독
+    subscribeToRoom(roomCode, callback) {
+        const roomRef = this.roomsRef.child(roomCode);
+        return roomRef.on('value', (snapshot) => {
+            if (snapshot.exists()) {
+                callback(snapshot.val());
+            } else {
+                callback(null);
+            }
+        });
+    }
+
+    // 실시간 메시지 구독
+    subscribeToMessages(roomCode, callback) {
+        const messagesRef = this.messagesRef.child(roomCode);
+        return messagesRef.on('child_added', (snapshot) => {
+            callback(snapshot.val());
+        });
+    }
+
+    // 메시지 전송
+    async sendMessage(roomCode, message) {
+        try {
+            await this.messagesRef.child(roomCode).push({
+                ...message,
+                timestamp: firebase.database.ServerValue.TIMESTAMP
+            });
+            return true;
+        } catch (error) {
+            console.error('메시지 전송 실패:', error);
+            return false;
+        }
+    }
+
+    // 게임 시작
+    async startGame(roomCode, topic, liar, keywords) {
+        console.log('RoomManager: 게임 시작 요청', { roomCode, topic, liar, keywords });
+        try {
+            await this.roomsRef.child(roomCode).update({
+                gameStarted: true,
+                topic: topic,
+                liar: liar,
+                keywords: keywords
+            });
+            console.log('RoomManager: 게임 시작 성공');
+            return true;
+        } catch (error) {
+            console.error('RoomManager: 게임 시작 실패:', error);
+            throw error; // 에러를 다시 던져서 상위에서 처리
+        }
+    }
+
+    // 구독 해제
+    unsubscribe(roomCode, messageSubscription = null) {
+        this.roomsRef.child(roomCode).off();
+        if (messageSubscription) {
+            this.messagesRef.child(roomCode).off();
         }
     }
 }
@@ -105,37 +197,55 @@ class LiarGame {
         this.messages = [];
         
         this.initializeEventListeners();
-        this.loadKeywords();
+        
+        // 로컬 키워드 데이터 저장
+        this.localKeywords = this.loadKeywords();
+        console.log('로컬 키워드 로드 완료:', Object.keys(this.localKeywords));
         
         // 주기적으로 방 정보 업데이트
         this.startRoomUpdateInterval();
     }
 
-    // 방 정보 업데이트 인터벌 시작
+    // 방 정보 업데이트 인터벌 시작 (Firebase 실시간 구독으로 대체됨)
     startRoomUpdateInterval() {
-        setInterval(() => {
-            if (this.roomId && this.currentScreen === 'waiting') {
-                this.updateRoomInfo();
-            }
-        }, 2000); // 2초마다 업데이트
+        // Firebase 실시간 구독을 사용하므로 더 이상 필요하지 않음
+        console.log('Firebase 실시간 구독을 사용합니다.');
     }
 
-    // 방 정보 업데이트
-    async updateRoomInfo() {
-        const room = await roomManager.getRoom(this.roomId);
-        if (room) {
-            this.players = room.players;
-            this.initializeWaitingRoom();
-        } else {
-            // 방이 삭제된 경우
-            alert('방이 삭제되었습니다.');
-            this.leaveRoom();
-        }
+    // 실시간 방 정보 구독 시작
+    startRoomSubscription() {
+        this.roomSubscription = roomManager.subscribeToRoom(this.roomId, (room) => {
+            if (room) {
+                this.players = room.players;
+                this.gameStarted = room.gameStarted;
+                this.topic = room.topic;
+                this.liar = room.liar;
+                this.keywords = room.keywords;
+                
+                if (this.gameStarted && this.currentScreen !== 'game') {
+                    this.showScreen('game');
+                    this.initializeGame();
+                } else if (!this.gameStarted && this.currentScreen === 'waiting') {
+                    this.initializeWaitingRoom();
+                }
+            } else {
+                // 방이 삭제된 경우
+                alert('방이 삭제되었습니다.');
+                this.leaveRoom();
+            }
+        });
+    }
+
+    // 실시간 메시지 구독 시작
+    startMessageSubscription() {
+        this.messageSubscription = roomManager.subscribeToMessages(this.roomId, (message) => {
+            this.addMessageToChat(message);
+        });
     }
 
     // 키워드 데이터 로드
     loadKeywords() {
-        this.keywords = {
+        return {
             politics: {
                 normal: ['대통령', '국회', '정부', '민주주의', '선거', '정책', '법률', '외교'],
                 liar: ['총리', '의회', '행정부', '공화국', '투표', '방침', '규정', '국제관계']
@@ -175,6 +285,10 @@ class LiarGame {
             music: {
                 normal: ['BTS', '블랙핑크', '아이유', '싸이', '빅뱅', '소녀시대', '엑소', '레드벨벳'],
                 liar: ['세븐틴', '투모로우바이투게더', '태연', '제니', '투피엠', '아이브', '뉴진스', '르세라핌']
+            },
+            all: {
+                normal: ['지구', '태양', '달', '별', '우주', '은하수', '행성', '소행성'],
+                liar: ['바다', '산', '강', '숲', '사막', '빙하', '화산', '지진']
             }
         };
     }
@@ -189,6 +303,14 @@ class LiarGame {
         document.getElementById('create-room-btn').addEventListener('click', () => this.showScreen('nickname'));
         document.getElementById('join-room-btn').addEventListener('click', () => this.joinRoomByCode());
         document.getElementById('back-to-home-btn').addEventListener('click', () => this.showScreen('home'));
+        
+        // 방 코드 입력 실시간 검증
+        document.getElementById('room-code-input').addEventListener('input', (e) => {
+            let value = e.target.value.toUpperCase();
+            // 영문+숫자만 허용
+            value = value.replace(/[^A-Z0-9]/g, '');
+            e.target.value = value;
+        });
 
         // 닉네임 입력
         document.getElementById('join-btn').addEventListener('click', () => this.joinGame());
@@ -303,75 +425,97 @@ class LiarGame {
     async createRoom() {
         this.roomId = this.generateRoomId();
         
-        // 방 매니저에 방 생성
-        const room = await roomManager.createRoom(this.roomId, this.playerName);
-        if (!room) {
-            alert('방 생성에 실패했습니다. 다시 시도해주세요.');
-            return;
+        try {
+            // 방 매니저에 방 생성
+            const room = await roomManager.createRoom(this.roomId, this.playerName);
+            if (!room) {
+                alert('방 생성에 실패했습니다. 다시 시도해주세요.');
+                return;
+            }
+            
+            this.isHost = true;
+            this.players = room.players;
+            
+            // 방 코드 표시
+            document.getElementById('room-code-display').textContent = this.roomId;
+            
+            // 방 링크 생성
+            const roomLink = `${window.location.origin}${window.location.pathname}?room=${this.roomId}`;
+            document.getElementById('share-link').value = roomLink;
+            document.getElementById('room-link').classList.remove('hidden');
+            
+            this.showScreen('waiting');
+            
+            // 실시간 구독 시작
+            this.startRoomSubscription();
+        } catch (error) {
+            alert('방 생성에 실패했습니다: ' + error.message);
         }
-        
-        this.isHost = true;
-        this.players = room.players;
-        
-        // 방 코드 표시
-        document.getElementById('room-code-display').textContent = this.roomId;
-        
-        // 방 링크 생성
-        const roomLink = `${window.location.origin}${window.location.pathname}?room=${this.roomId}`;
-        document.getElementById('share-link').value = roomLink;
-        document.getElementById('room-link').classList.remove('hidden');
-        
-        this.showScreen('waiting');
     }
 
     // 기존 방 참가
     async joinExistingRoom() {
-        // 방 매니저에서 방 정보 가져오기
-        const room = await roomManager.getRoom(this.roomId);
-        if (!room) {
-            alert('존재하지 않는 방입니다.');
+        try {
+            // 방에 참가
+            const joinedRoom = await roomManager.joinRoom(this.roomId, this.playerName);
+            
+            this.isHost = false;
+            this.players = joinedRoom.players;
+            
+            // 방 링크 표시
+            const roomLink = `${window.location.origin}${window.location.pathname}?room=${this.roomId}`;
+            document.getElementById('share-link').value = roomLink;
+            document.getElementById('room-link').classList.remove('hidden');
+            
+            this.showScreen('waiting');
+            
+            // 실시간 구독 시작
+            this.startRoomSubscription();
+        } catch (error) {
+            alert('방 참가에 실패했습니다: ' + error.message);
             this.showScreen('room-select');
-            return;
         }
-        
-        // 방에 참가
-        const joinedRoom = await roomManager.joinRoom(this.roomId, this.playerName);
-        if (!joinedRoom) {
-            alert('방 참가에 실패했습니다. 같은 이름의 플레이어가 있거나 게임이 이미 시작되었을 수 있습니다.');
-            this.showScreen('room-select');
-            return;
-        }
-        
-        this.isHost = false;
-        this.players = joinedRoom.players;
-        
-        // 방 링크 표시
-        const roomLink = `${window.location.origin}${window.location.pathname}?room=${this.roomId}`;
-        document.getElementById('share-link').value = roomLink;
-        document.getElementById('room-link').classList.remove('hidden');
-        
-        this.showScreen('waiting');
     }
 
-    // 방 코드 생성 (6자리 특수문자 + 영어 조합)
+    // 방 코드 생성 (영문+숫자만 사용)
     generateRoomId() {
-        const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*';
+        // 영문 대문자와 숫자만 사용 (특수문자 제외)
+        const letters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+        const numbers = '0123456789';
+        const allChars = letters + numbers;
+        
         let result = '';
         for (let i = 0; i < 6; i++) {
-            result += chars.charAt(Math.floor(Math.random() * chars.length));
+            result += allChars.charAt(Math.floor(Math.random() * allChars.length));
         }
+        
+        // 생성된 코드가 영문+숫자만 포함하는지 한번 더 검증
+        if (!/^[A-Z0-9]{6}$/.test(result)) {
+            // 만약 특수문자가 포함되어 있다면 다시 생성
+            return this.generateRoomId();
+        }
+        
         return result;
     }
 
     // 방 코드로 참가
     joinRoomByCode() {
-        const roomCode = document.getElementById('room-code-input').value.trim().toUpperCase();
+        let roomCode = document.getElementById('room-code-input').value.trim().toUpperCase();
+        
         if (!roomCode) {
             alert('방 코드를 입력해주세요.');
             return;
         }
+        
         if (roomCode.length !== 6) {
             alert('방 코드는 6자리여야 합니다.');
+            return;
+        }
+        
+        // 영문+숫자만 허용하는지 엄격하게 검증
+        if (!/^[A-Z0-9]{6}$/.test(roomCode)) {
+            alert('방 코드는 영문 대문자와 숫자만 사용 가능합니다.');
+            document.getElementById('room-code-input').value = '';
             return;
         }
         
@@ -447,6 +591,13 @@ class LiarGame {
 
     // 방 나가기
     async leaveRoom() {
+        // 구독 해제
+        if (this.roomSubscription) {
+            roomManager.unsubscribe(this.roomId, this.messageSubscription);
+            this.roomSubscription = null;
+            this.messageSubscription = null;
+        }
+        
         if (this.roomId && this.playerName) {
             await roomManager.removePlayer(this.roomId, this.playerName);
         }
@@ -455,6 +606,10 @@ class LiarGame {
         this.isHost = false;
         this.players = [];
         this.playerName = '';
+        this.gameStarted = false;
+        this.topic = '';
+        this.liar = null;
+        this.keywords = null;
         document.getElementById('nickname-input').value = '';
         document.getElementById('room-link').classList.add('hidden');
         document.getElementById('room-link-waiting').classList.add('hidden');
@@ -463,6 +618,8 @@ class LiarGame {
 
     // 주제 선택
     selectTopic(button) {
+        console.log('주제 선택:', button.dataset.topic);
+        
         // 기존 선택 해제
         document.querySelectorAll('.topic-btn').forEach(btn => {
             btn.classList.remove('selected');
@@ -471,47 +628,57 @@ class LiarGame {
         // 새 선택
         button.classList.add('selected');
         this.selectedTopic = button.dataset.topic;
+        console.log('선택된 주제 저장:', this.selectedTopic);
         
         // 시작 버튼 활성화
         document.getElementById('confirm-topic-btn').disabled = false;
     }
 
     // 게임 시작
-    startGame() {
+    async startGame() {
+        console.log('게임 시작 시도...');
+        console.log('선택된 주제:', this.selectedTopic);
+        console.log('로컬 키워드:', this.localKeywords);
+        
         if (!this.selectedTopic) {
             alert('주제를 선택해주세요.');
             return;
         }
 
-        // 방 매니저에서 방 정보 업데이트
-        const room = roomManager.getRoom(this.roomId);
-        if (!room) {
-            alert('방을 찾을 수 없습니다.');
-            return;
+        try {
+            // 라이어 선정
+            const liarIndex = Math.floor(Math.random() * this.players.length);
+            const liar = this.players[liarIndex];
+            console.log('선택된 라이어:', liar);
+
+            // 키워드 설정 (로컬 키워드 데이터 사용)
+            const topicKeywords = this.localKeywords[this.selectedTopic] || this.localKeywords.general;
+            console.log('주제 키워드:', topicKeywords);
+            
+            if (!topicKeywords) {
+                throw new Error(`주제 '${this.selectedTopic}'에 대한 키워드를 찾을 수 없습니다.`);
+            }
+            
+            const normalKeyword = topicKeywords.normal[Math.floor(Math.random() * topicKeywords.normal.length)];
+            const liarKeyword = topicKeywords.liar[Math.floor(Math.random() * topicKeywords.liar.length)];
+            console.log('선택된 키워드:', { normal: normalKeyword, liar: liarKeyword });
+
+            // Firebase에 게임 시작 정보 저장
+            console.log('Firebase에 게임 시작 정보 저장 중...');
+            await roomManager.startGame(this.roomId, this.selectedTopic, liar.name, {
+                normal: normalKeyword,
+                liar: liarKeyword
+            });
+            console.log('Firebase 저장 완료');
+
+            // 메시지 구독 시작
+            this.startMessageSubscription();
+            console.log('게임 시작 완료!');
+
+        } catch (error) {
+            console.error('게임 시작 에러:', error);
+            alert('게임 시작에 실패했습니다: ' + error.message);
         }
-
-        // 게임 시작 상태로 변경
-        room.gameStarted = true;
-        room.topic = this.selectedTopic;
-
-        // 라이어 선정
-        const liarIndex = Math.floor(Math.random() * this.players.length);
-        const liar = this.players[liarIndex];
-        room.liar = liar.name;
-
-        // 키워드 설정
-        const topicKeywords = this.keywords[this.selectedTopic] || this.keywords.general;
-        const normalKeyword = topicKeywords.normal[Math.floor(Math.random() * topicKeywords.normal.length)];
-        const liarKeyword = topicKeywords.liar[Math.floor(Math.random() * topicKeywords.liar.length)];
-
-        this.gameData = {
-            topic: this.getTopicName(this.selectedTopic),
-            keyword: normalKeyword,
-            isLiar: liar.name === this.playerName,
-            liarKeyword: liarKeyword
-        };
-
-        this.showScreen('game');
     }
 
     // 주제 이름 가져오기
@@ -534,35 +701,57 @@ class LiarGame {
 
     // 게임 초기화
     initializeGame() {
-        document.getElementById('current-topic').textContent = this.gameData.topic;
-        document.getElementById('my-keyword').textContent = this.gameData.isLiar ? this.gameData.liarKeyword : this.gameData.keyword;
+        // Firebase에서 받은 데이터 사용
+        const topicName = this.getTopicName(this.topic);
+        const isLiar = this.liar === this.playerName;
+        
+        // Firebase에서 받은 키워드 데이터 사용
+        let myKeyword;
+        if (this.keywords && this.keywords.normal && this.keywords.liar) {
+            myKeyword = isLiar ? this.keywords.liar : this.keywords.normal;
+        } else {
+            // 키워드 데이터가 없는 경우 기본값
+            myKeyword = isLiar ? '라이어 키워드' : '일반 키워드';
+        }
+        
+        document.getElementById('current-topic').textContent = topicName;
+        document.getElementById('my-keyword').textContent = myKeyword;
         
         // 채팅 초기화
         this.messages = [];
         this.updateChatDisplay();
         
         // 시스템 메시지 추가
-        this.addSystemMessage(`게임이 시작되었습니다! 주제: ${this.gameData.topic}`);
-        this.addSystemMessage(`당신의 키워드: ${this.gameData.isLiar ? this.gameData.liarKeyword : this.gameData.keyword}`);
-        if (this.gameData.isLiar) {
+        this.addSystemMessage(`게임이 시작되었습니다! 주제: ${topicName}`);
+        this.addSystemMessage(`당신의 키워드: ${myKeyword}`);
+        if (isLiar) {
             this.addSystemMessage('당신은 라이어입니다! 다른 사람들을 속여보세요.');
         }
     }
 
     // 메시지 전송
-    sendMessage() {
+    async sendMessage() {
         const input = document.getElementById('chat-input');
         const message = input.value.trim();
         
         if (!message) return;
 
-        this.messages.push({
-            player: this.playerName,
-            content: message,
-            timestamp: new Date()
-        });
+        try {
+            await roomManager.sendMessage(this.roomId, {
+                player: this.playerName,
+                content: message,
+                timestamp: new Date()
+            });
 
-        input.value = '';
+            input.value = '';
+        } catch (error) {
+            alert('메시지 전송에 실패했습니다: ' + error.message);
+        }
+    }
+
+    // 채팅에 메시지 추가
+    addMessageToChat(message) {
+        this.messages.push(message);
         this.updateChatDisplay();
     }
 
