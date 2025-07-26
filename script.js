@@ -76,6 +76,7 @@ class LiarGame {
         // 닉네임 입력
         document.getElementById('join-btn').addEventListener('click', () => this.joinGame());
         document.getElementById('copy-link').addEventListener('click', () => this.copyRoomLink());
+        document.getElementById('copy-link-waiting').addEventListener('click', () => this.copyRoomLinkWaiting());
 
         // 대기실
         document.getElementById('start-game-btn').addEventListener('click', () => this.showScreen('topic'));
@@ -199,6 +200,12 @@ class LiarGame {
             { name: '방장', isHost: true },
             { name: this.playerName, isHost: false }
         ];
+        
+        // 방 링크 표시 (기존 방에 참가한 경우에도 링크를 볼 수 있도록)
+        const roomLink = `${window.location.origin}${window.location.pathname}?room=${this.roomId}`;
+        document.getElementById('share-link').value = roomLink;
+        document.getElementById('room-link').classList.remove('hidden');
+        
         this.showScreen('waiting');
     }
 
@@ -215,10 +222,25 @@ class LiarGame {
         alert('방 링크가 복사되었습니다!');
     }
 
+    // 대기실 방 링크 복사
+    copyRoomLinkWaiting() {
+        const linkInput = document.getElementById('share-link-waiting');
+        linkInput.select();
+        document.execCommand('copy');
+        alert('방 링크가 복사되었습니다!');
+    }
+
     // 대기실 초기화
     initializeWaitingRoom() {
         document.getElementById('host-name').textContent = this.players.find(p => p.isHost)?.name || '방장';
         document.getElementById('player-count').textContent = this.players.length;
+        
+        // 방 링크 표시 (대기실에서도 링크를 볼 수 있도록)
+        if (this.roomId) {
+            const roomLink = `${window.location.origin}${window.location.pathname}?room=${this.roomId}`;
+            document.getElementById('share-link-waiting').value = roomLink;
+            document.getElementById('room-link-waiting').classList.remove('hidden');
+        }
         
         // 참가자 목록 업데이트
         const playersList = document.getElementById('players-list');
@@ -247,6 +269,7 @@ class LiarGame {
         this.playerName = '';
         document.getElementById('nickname-input').value = '';
         document.getElementById('room-link').classList.add('hidden');
+        document.getElementById('room-link-waiting').classList.add('hidden');
         this.showScreen('home');
     }
 
