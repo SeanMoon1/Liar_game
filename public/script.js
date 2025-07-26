@@ -312,6 +312,8 @@ class LiarGame {
 
     // 이벤트 리스너 초기화
     initializeEventListeners() {
+        console.log('이벤트 리스너 초기화 시작...');
+        
         // 홈 화면
         document.getElementById('start-btn').addEventListener('click', () => this.showScreen('room-select'));
         document.getElementById('home-btn').addEventListener('click', () => this.showScreen('home'));
@@ -339,10 +341,28 @@ class LiarGame {
         document.getElementById('leave-room-btn').addEventListener('click', () => this.leaveRoom());
 
         // 주제 선택
-        document.querySelectorAll('.topic-btn').forEach(btn => {
-            btn.addEventListener('click', (e) => this.selectTopic(e.target));
+        const topicButtons = document.querySelectorAll('.topic-btn');
+        console.log('주제 버튼 개수:', topicButtons.length);
+        topicButtons.forEach((btn, index) => {
+            console.log(`주제 버튼 ${index}:`, btn.dataset.topic);
+            btn.addEventListener('click', (e) => {
+                console.log('주제 버튼 클릭됨:', e.target.dataset.topic);
+                this.selectTopic(e.target);
+            });
         });
-        document.getElementById('confirm-topic-btn').addEventListener('click', () => this.startGame());
+        
+        // 게임 시작 버튼
+        const confirmTopicBtn = document.getElementById('confirm-topic-btn');
+        console.log('게임 시작 버튼 요소:', confirmTopicBtn);
+        if (confirmTopicBtn) {
+            confirmTopicBtn.addEventListener('click', () => {
+                console.log('게임 시작 버튼 클릭됨!');
+                this.startGame();
+            });
+        } else {
+            console.error('게임 시작 버튼을 찾을 수 없습니다!');
+        }
+        
         document.getElementById('back-to-waiting-btn').addEventListener('click', () => this.showScreen('waiting'));
 
         // 게임 화면
@@ -649,6 +669,9 @@ class LiarGame {
 
     // 주제 선택
     selectTopic(button) {
+        console.log('주제 선택 함수 호출됨');
+        console.log('버튼 요소:', button);
+        console.log('버튼 dataset:', button.dataset);
         console.log('주제 선택:', button.dataset.topic);
         
         // 기존 선택 해제
@@ -662,16 +685,28 @@ class LiarGame {
         console.log('선택된 주제 저장:', this.selectedTopic);
         
         // 시작 버튼 활성화
-        document.getElementById('confirm-topic-btn').disabled = false;
+        const confirmBtn = document.getElementById('confirm-topic-btn');
+        console.log('확인 버튼 요소:', confirmBtn);
+        if (confirmBtn) {
+            confirmBtn.disabled = false;
+            console.log('확인 버튼 활성화 완료');
+        } else {
+            console.error('확인 버튼을 찾을 수 없습니다!');
+        }
     }
 
     // 게임 시작
     async startGame() {
-        console.log('게임 시작 시도...');
+        console.log('=== 게임 시작 함수 호출됨 ===');
+        console.log('현재 this 객체:', this);
         console.log('선택된 주제:', this.selectedTopic);
         console.log('로컬 키워드:', this.localKeywords);
+        console.log('플레이어 목록:', this.players);
+        console.log('방 ID:', this.roomId);
+        console.log('roomManager 상태:', roomManager);
         
         if (!this.selectedTopic) {
+            console.error('주제가 선택되지 않았습니다!');
             alert('주제를 선택해주세요.');
             return;
         }
