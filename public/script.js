@@ -213,14 +213,23 @@ class LiarGame {
         this.selectedVote = null;
         this.messages = [];
         
-        this.initializeEventListeners();
-        
         // 로컬 키워드 데이터 저장
         this.localKeywords = this.loadKeywords();
         console.log('로컬 키워드 로드 완료:', Object.keys(this.localKeywords));
         
         // 주기적으로 방 정보 업데이트
         this.startRoomUpdateInterval();
+        
+        // DOM이 완전히 로드된 후 이벤트 리스너 초기화
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', () => {
+                console.log('DOM 로드 완료, 이벤트 리스너 초기화 시작');
+                this.initializeEventListeners();
+            });
+        } else {
+            console.log('DOM 이미 로드됨, 이벤트 리스너 초기화 시작');
+            this.initializeEventListeners();
+        }
     }
 
     // 방 정보 업데이트 인터벌 시작 (Firebase 실시간 구독으로 대체됨)
@@ -312,85 +321,130 @@ class LiarGame {
 
     // 이벤트 리스너 초기화
     initializeEventListeners() {
-        console.log('이벤트 리스너 초기화 시작...');
+        console.log('=== 이벤트 리스너 초기화 시작 ===');
+        console.log('현재 DOM 상태:', document.readyState);
+        console.log('현재 this 객체:', this);
         
-        // 홈 화면
-        document.getElementById('start-btn').addEventListener('click', () => this.showScreen('room-select'));
-        document.getElementById('home-btn').addEventListener('click', () => this.showScreen('home'));
+        try {
+            // 홈 화면
+            const startBtn = document.getElementById('start-btn');
+            const homeBtn = document.getElementById('home-btn');
+            console.log('홈 화면 버튼들:', { startBtn, homeBtn });
+            
+            if (startBtn) startBtn.addEventListener('click', () => this.showScreen('room-select'));
+            if (homeBtn) homeBtn.addEventListener('click', () => this.showScreen('home'));
 
-        // 방 선택 화면
-        document.getElementById('create-room-btn').addEventListener('click', () => this.showScreen('nickname'));
-        document.getElementById('join-room-btn').addEventListener('click', () => this.joinRoomByCode());
-        document.getElementById('back-to-home-btn').addEventListener('click', () => this.showScreen('home'));
-        
-        // 방 코드 입력 실시간 검증
-        document.getElementById('room-code-input').addEventListener('input', (e) => {
-            let value = e.target.value.toUpperCase();
-            // 영문+숫자만 허용
-            value = value.replace(/[^A-Z0-9]/g, '');
-            e.target.value = value;
-        });
+            // 방 선택 화면
+            const createRoomBtn = document.getElementById('create-room-btn');
+            const joinRoomBtn = document.getElementById('join-room-btn');
+            const backToHomeBtn = document.getElementById('back-to-home-btn');
+            
+            if (createRoomBtn) createRoomBtn.addEventListener('click', () => this.showScreen('nickname'));
+            if (joinRoomBtn) joinRoomBtn.addEventListener('click', () => this.joinRoomByCode());
+            if (backToHomeBtn) backToHomeBtn.addEventListener('click', () => this.showScreen('home'));
+            
+            // 방 코드 입력 실시간 검증
+            const roomCodeInput = document.getElementById('room-code-input');
+            if (roomCodeInput) {
+                roomCodeInput.addEventListener('input', (e) => {
+                    let value = e.target.value.toUpperCase();
+                    value = value.replace(/[^A-Z0-9]/g, '');
+                    e.target.value = value;
+                });
+            }
 
-        // 닉네임 입력
-        document.getElementById('join-btn').addEventListener('click', () => this.joinGame());
-        document.getElementById('copy-link').addEventListener('click', () => this.copyRoomLink());
-        document.getElementById('copy-link-waiting').addEventListener('click', () => this.copyRoomLinkWaiting());
+            // 닉네임 입력
+            const joinBtn = document.getElementById('join-btn');
+            const copyLink = document.getElementById('copy-link');
+            const copyLinkWaiting = document.getElementById('copy-link-waiting');
+            
+            if (joinBtn) joinBtn.addEventListener('click', () => this.joinGame());
+            if (copyLink) copyLink.addEventListener('click', () => this.copyRoomLink());
+            if (copyLinkWaiting) copyLinkWaiting.addEventListener('click', () => this.copyRoomLinkWaiting());
 
-        // 대기실
-        document.getElementById('start-game-btn').addEventListener('click', () => this.showScreen('topic'));
-        document.getElementById('leave-room-btn').addEventListener('click', () => this.leaveRoom());
+            // 대기실
+            const startGameBtn = document.getElementById('start-game-btn');
+            const leaveRoomBtn = document.getElementById('leave-room-btn');
+            
+            if (startGameBtn) startGameBtn.addEventListener('click', () => this.showScreen('topic'));
+            if (leaveRoomBtn) leaveRoomBtn.addEventListener('click', () => this.leaveRoom());
 
-        // 주제 선택
-        const topicButtons = document.querySelectorAll('.topic-btn');
-        console.log('주제 버튼 개수:', topicButtons.length);
-        topicButtons.forEach((btn, index) => {
-            console.log(`주제 버튼 ${index}:`, btn.dataset.topic);
-            btn.addEventListener('click', (e) => {
-                console.log('주제 버튼 클릭됨:', e.target.dataset.topic);
-                this.selectTopic(e.target);
+            // 주제 선택
+            const topicButtons = document.querySelectorAll('.topic-btn');
+            console.log('주제 버튼 개수:', topicButtons.length);
+            topicButtons.forEach((btn, index) => {
+                console.log(`주제 버튼 ${index}:`, btn.dataset.topic);
+                btn.addEventListener('click', (e) => {
+                    console.log('주제 버튼 클릭됨:', e.target.dataset.topic);
+                    this.selectTopic(e.target);
+                });
             });
-        });
-        
-        // 게임 시작 버튼
-        const confirmTopicBtn = document.getElementById('confirm-topic-btn');
-        console.log('게임 시작 버튼 요소:', confirmTopicBtn);
-        if (confirmTopicBtn) {
-            confirmTopicBtn.addEventListener('click', () => {
-                console.log('게임 시작 버튼 클릭됨!');
-                this.startGame();
-            });
-        } else {
-            console.error('게임 시작 버튼을 찾을 수 없습니다!');
+            
+            // 게임 시작 버튼
+            const confirmTopicBtn = document.getElementById('confirm-topic-btn');
+            console.log('게임 시작 버튼 요소:', confirmTopicBtn);
+            if (confirmTopicBtn) {
+                confirmTopicBtn.addEventListener('click', () => {
+                    console.log('게임 시작 버튼 클릭됨!');
+                    this.startGame();
+                });
+            } else {
+                console.error('게임 시작 버튼을 찾을 수 없습니다!');
+            }
+            
+            const backToWaitingBtn = document.getElementById('back-to-waiting-btn');
+            if (backToWaitingBtn) backToWaitingBtn.addEventListener('click', () => this.showScreen('waiting'));
+
+            // 게임 화면
+            const sendMessageBtn = document.getElementById('send-message-btn');
+            const voteBtn = document.getElementById('vote-btn');
+            const endGameBtn = document.getElementById('end-game-btn');
+            
+            if (sendMessageBtn) sendMessageBtn.addEventListener('click', () => this.sendMessage());
+            if (voteBtn) voteBtn.addEventListener('click', () => this.showVoteScreen());
+            if (endGameBtn) endGameBtn.addEventListener('click', () => this.endGame());
+
+            // 투표 화면
+            const confirmVoteBtn = document.getElementById('confirm-vote-btn');
+            const cancelVoteBtn = document.getElementById('cancel-vote-btn');
+            
+            if (confirmVoteBtn) confirmVoteBtn.addEventListener('click', () => this.confirmVote());
+            if (cancelVoteBtn) cancelVoteBtn.addEventListener('click', () => this.showScreen('game'));
+
+            // 결과 화면
+            const playAgainBtn = document.getElementById('play-again-btn');
+            const backToHomeBtn2 = document.getElementById('back-to-home-btn');
+            
+            if (playAgainBtn) playAgainBtn.addEventListener('click', () => this.playAgain());
+            if (backToHomeBtn2) backToHomeBtn2.addEventListener('click', () => this.showScreen('home'));
+
+            // 엔터키 이벤트
+            const nicknameInput = document.getElementById('nickname-input');
+            const chatInput = document.getElementById('chat-input');
+            
+            if (nicknameInput) {
+                nicknameInput.addEventListener('keypress', (e) => {
+                    if (e.key === 'Enter') this.joinGame();
+                });
+            }
+            if (roomCodeInput) {
+                roomCodeInput.addEventListener('keypress', (e) => {
+                    if (e.key === 'Enter') this.joinRoomByCode();
+                });
+            }
+            if (chatInput) {
+                chatInput.addEventListener('keypress', (e) => {
+                    if (e.key === 'Enter') this.sendMessage();
+                });
+            }
+
+            // URL 파라미터 확인
+            this.checkUrlParams();
+            
+            console.log('=== 이벤트 리스너 초기화 완료 ===');
+        } catch (error) {
+            console.error('이벤트 리스너 초기화 중 에러 발생:', error);
         }
-        
-        document.getElementById('back-to-waiting-btn').addEventListener('click', () => this.showScreen('waiting'));
-
-        // 게임 화면
-        document.getElementById('send-message-btn').addEventListener('click', () => this.sendMessage());
-        document.getElementById('vote-btn').addEventListener('click', () => this.showVoteScreen());
-        document.getElementById('end-game-btn').addEventListener('click', () => this.endGame());
-
-        // 투표 화면
-        document.getElementById('confirm-vote-btn').addEventListener('click', () => this.confirmVote());
-        document.getElementById('cancel-vote-btn').addEventListener('click', () => this.showScreen('game'));
-
-        // 결과 화면
-        document.getElementById('play-again-btn').addEventListener('click', () => this.playAgain());
-        document.getElementById('back-to-home-btn').addEventListener('click', () => this.showScreen('home'));
-
-        // 엔터키 이벤트
-        document.getElementById('nickname-input').addEventListener('keypress', (e) => {
-            if (e.key === 'Enter') this.joinGame();
-        });
-        document.getElementById('room-code-input').addEventListener('keypress', (e) => {
-            if (e.key === 'Enter') this.joinRoomByCode();
-        });
-        document.getElementById('chat-input').addEventListener('keypress', (e) => {
-            if (e.key === 'Enter') this.sendMessage();
-        });
-
-        // URL 파라미터 확인
-        this.checkUrlParams();
     }
 
     // URL 파라미터 확인 (방 참가용)
