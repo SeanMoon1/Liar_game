@@ -4,6 +4,11 @@ node_modules
 # Firebase 설정 파일 (API 키 포함)
 public/firebase-config.js
 
+# Firebase 캐시 및 백업 파일
+.firebase/
+firebase.json.backup
+*.backup
+
 # 환경 변수 파일
 .env.local
 .env.production
@@ -16,3 +21,4 @@ firebase-debug.*.log
 # 임시 파일
 .DS_Store
 Thumbs.db
+y/

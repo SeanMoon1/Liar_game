@@ -174,8 +174,25 @@ class RoomManager {
     }
 }
 
-// 전역 방 매니저 인스턴스
-const roomManager = new RoomManager();
+// Firebase 초기화 확인
+let roomManager;
+
+// Firebase가 로드된 후 방 매니저 초기화
+document.addEventListener('DOMContentLoaded', () => {
+    try {
+        // Firebase가 초기화되었는지 확인
+        if (typeof firebase !== 'undefined' && firebase.database) {
+            roomManager = new RoomManager();
+            console.log('Firebase 연결 성공, RoomManager 초기화 완료');
+        } else {
+            console.error('Firebase가 로드되지 않았습니다.');
+            alert('Firebase 연결에 실패했습니다. 페이지를 새로고침해주세요.');
+        }
+    } catch (error) {
+        console.error('Firebase 초기화 에러:', error);
+        alert('Firebase 초기화에 실패했습니다: ' + error.message);
+    }
+});
 
 // 게임 상태 관리
 class LiarGame {
@@ -423,6 +440,13 @@ class LiarGame {
 
     // 방 생성
     async createRoom() {
+        // roomManager가 초기화되었는지 확인
+        if (!roomManager) {
+            console.error('RoomManager가 초기화되지 않았습니다.');
+            alert('Firebase 연결에 문제가 있습니다. 페이지를 새로고침해주세요.');
+            return;
+        }
+        
         this.roomId = this.generateRoomId();
         
         try {
@@ -455,6 +479,13 @@ class LiarGame {
 
     // 기존 방 참가
     async joinExistingRoom() {
+        // roomManager가 초기화되었는지 확인
+        if (!roomManager) {
+            console.error('RoomManager가 초기화되지 않았습니다.');
+            alert('Firebase 연결에 문제가 있습니다. 페이지를 새로고침해주세요.');
+            return;
+        }
+        
         try {
             // 방에 참가
             const joinedRoom = await roomManager.joinRoom(this.roomId, this.playerName);
@@ -642,6 +673,13 @@ class LiarGame {
         
         if (!this.selectedTopic) {
             alert('주제를 선택해주세요.');
+            return;
+        }
+
+        // roomManager가 초기화되었는지 확인
+        if (!roomManager) {
+            console.error('RoomManager가 초기화되지 않았습니다.');
+            alert('Firebase 연결에 문제가 있습니다. 페이지를 새로고침해주세요.');
             return;
         }
 
@@ -918,6 +956,14 @@ class LiarGame {
 }
 
 // 게임 시작
+let gameInstance;
+
 document.addEventListener('DOMContentLoaded', () => {
-    new LiarGame();
+    try {
+        gameInstance = new LiarGame();
+        console.log('LiarGame 인스턴스 생성 완료');
+    } catch (error) {
+        console.error('LiarGame 인스턴스 생성 실패:', error);
+        alert('게임 초기화에 실패했습니다: ' + error.message);
+    }
 }); 
