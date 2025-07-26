@@ -1,6 +1,13 @@
 // 전역 방 저장소 (실제로는 Redis나 데이터베이스 사용 권장)
 const rooms = new Map();
 
+// 환경변수에서 설정 가져오기
+const MAX_ROOMS = process.env.MAX_ROOMS || 100;
+const ROOM_TIMEOUT = process.env.ROOM_TIMEOUT || 3600000; // 1시간 (밀리초)
+const MAX_PLAYERS_PER_ROOM = process.env.MAX_PLAYERS_PER_ROOM || 10;
+const NODE_ENV = process.env.NODE_ENV || 'development';
+const LOG_LEVEL = process.env.LOG_LEVEL || 'info';
+
 export default function handler(req, res) {
   if (req.method === 'POST') {
     // 방 생성
@@ -8,6 +15,11 @@ export default function handler(req, res) {
     
     if (rooms.has(roomCode)) {
       return res.status(400).json({ error: '이미 존재하는 방 코드입니다.' });
+    }
+    
+    // 최대 방 개수 제한
+    if (rooms.size >= MAX_ROOMS) {
+      return res.status(400).json({ error: '최대 방 개수에 도달했습니다.' });
     }
     
     const room = {
@@ -18,7 +30,8 @@ export default function handler(req, res) {
       topic: '',
       liar: null,
       messages: [],
-      createdAt: new Date().toISOString()
+      createdAt: new Date().toISOString(),
+      maxPlayers: MAX_PLAYERS_PER_ROOM
     };
     
     rooms.set(roomCode, room);

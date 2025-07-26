@@ -1,6 +1,11 @@
 // 전역 방 저장소 (실제로는 Redis나 데이터베이스 사용 권장)
 const rooms = new Map();
 
+// 환경변수에서 설정 가져오기
+const MAX_PLAYERS_PER_ROOM = process.env.MAX_PLAYERS_PER_ROOM || 10;
+const NODE_ENV = process.env.NODE_ENV || 'development';
+const LOG_LEVEL = process.env.LOG_LEVEL || 'info';
+
 export default function handler(req, res) {
   if (req.method === 'POST') {
     const { roomCode, playerName } = req.body;
@@ -16,6 +21,11 @@ export default function handler(req, res) {
     
     if (room.gameStarted) {
       return res.status(400).json({ error: '게임이 이미 시작되었습니다.' });
+    }
+    
+    // 방 인원 수 제한 확인
+    if (room.players.length >= MAX_PLAYERS_PER_ROOM) {
+      return res.status(400).json({ error: '방 인원이 가득 찼습니다.' });
     }
     
     // 같은 이름의 플레이어가 있는지 확인

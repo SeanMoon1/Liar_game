@@ -116,17 +116,42 @@
 
 ## 🔧 설치 및 실행
 
+## ⚙️ 환경변수 설정
+
+프로젝트에서 사용하는 환경변수들입니다:
+
+| 변수명 | 기본값 | 설명 |
+|--------|--------|------|
+| `MAX_ROOMS` | 100 | 최대 생성 가능한 방 개수 |
+| `ROOM_TIMEOUT` | 3600000 | 방 자동 삭제 시간 (밀리초, 1시간) |
+| `MAX_PLAYERS_PER_ROOM` | 10 | 방당 최대 플레이어 수 |
+| `NODE_ENV` | development | 실행 환경 (development/production) |
+| `LOG_LEVEL` | info | 로그 레벨 (debug/info/warn/error) |
+| `PORT` | 3000 | 서버 포트 (로컬 개발용) |
+| `HOST` | localhost | 서버 호스트 (로컬 개발용) |
+| `GAME_TIMEOUT` | 300000 | 게임 타임아웃 (밀리초, 5분) |
+| `CORS_ORIGIN` | * | CORS 허용 도메인 |
+
 ### 로컬 개발
 1. 프로젝트를 다운로드합니다.
 2. `npm install` 명령어로 의존성을 설치합니다.
-3. `npm run dev` 명령어로 개발 서버를 실행합니다.
-4. 브라우저에서 `http://localhost:3000`으로 접속합니다.
+3. 환경변수 설정 (선택사항):
+   ```bash
+   # .env 파일 생성
+   cp env.example .env
+   # .env 파일을 편집하여 원하는 설정으로 변경
+   ```
+4. `npm run dev` 명령어로 개발 서버를 실행합니다.
+5. 브라우저에서 `http://localhost:3000`으로 접속합니다.
 
 ### Vercel 배포
 1. [Vercel](https://vercel.com)에 가입합니다.
 2. GitHub 저장소를 연결합니다.
-3. 자동으로 배포가 완료됩니다.
-4. 제공된 URL로 접속하여 게임을 즐깁니다.
+3. 환경변수 설정 (선택사항):
+   - Vercel 대시보드 → Settings → Environment Variables
+   - `env.example` 파일의 변수들을 필요에 따라 설정
+4. 자동으로 배포가 완료됩니다.
+5. 제공된 URL로 접속하여 게임을 즐깁니다.
 
 ### 정적 호스팅 (제한적)
 1. `public` 폴더의 파일들을 웹 서버에 업로드합니다.
