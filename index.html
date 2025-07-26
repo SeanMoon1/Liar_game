@@ -19,6 +19,31 @@
             </div>
         </div>
 
+        <!-- 방 선택 화면 -->
+        <div id="room-select-screen" class="screen">
+            <div class="container">
+                <h2>방을 선택하세요</h2>
+                <div class="room-options">
+                    <div class="room-option">
+                        <h3>새 방 만들기</h3>
+                        <p>새로운 게임 방을 생성합니다</p>
+                        <button id="create-room-btn" class="btn primary">방 만들기</button>
+                    </div>
+                    <div class="room-option">
+                        <h3>기존 방 참가</h3>
+                        <p>방 코드를 입력하여 참가합니다</p>
+                        <div class="input-group">
+                            <input type="text" id="room-code-input" placeholder="6자리 방 코드 입력" maxlength="6" style="text-transform: uppercase;">
+                            <button id="join-room-btn" class="btn primary">참가하기</button>
+                        </div>
+                    </div>
+                </div>
+                <div class="button-group">
+                    <button id="back-to-home-btn" class="btn secondary">홈으로</button>
+                </div>
+            </div>
+        </div>
+
         <!-- 닉네임 입력 화면 -->
         <div id="nickname-screen" class="screen">
             <div class="container">
@@ -28,6 +53,7 @@
                     <button id="join-btn" class="btn primary">입장하기</button>
                 </div>
                 <div id="room-link" class="room-link hidden">
+                    <p>방 코드: <strong id="room-code-display"></strong></p>
                     <p>방 링크를 공유하세요:</p>
                     <div class="link-container">
                         <input type="text" id="share-link" readonly>
@@ -49,6 +75,7 @@
                     <!-- 참가자 목록이 여기에 표시됩니다 -->
                 </div>
                 <div id="room-link-waiting" class="room-link hidden">
+                    <p>방 코드: <strong id="room-code-display-waiting"></strong></p>
                     <p>방 링크를 공유하세요:</p>
                     <div class="link-container">
                         <input type="text" id="share-link-waiting" readonly>

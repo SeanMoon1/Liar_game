@@ -70,8 +70,13 @@ class LiarGame {
     // 이벤트 리스너 초기화
     initializeEventListeners() {
         // 홈 화면
-        document.getElementById('start-btn').addEventListener('click', () => this.showScreen('nickname'));
+        document.getElementById('start-btn').addEventListener('click', () => this.showScreen('room-select'));
         document.getElementById('home-btn').addEventListener('click', () => this.showScreen('home'));
+
+        // 방 선택 화면
+        document.getElementById('create-room-btn').addEventListener('click', () => this.showScreen('nickname'));
+        document.getElementById('join-room-btn').addEventListener('click', () => this.joinRoomByCode());
+        document.getElementById('back-to-home-btn').addEventListener('click', () => this.showScreen('home'));
 
         // 닉네임 입력
         document.getElementById('join-btn').addEventListener('click', () => this.joinGame());
@@ -105,6 +110,9 @@ class LiarGame {
         // 엔터키 이벤트
         document.getElementById('nickname-input').addEventListener('keypress', (e) => {
             if (e.key === 'Enter') this.joinGame();
+        });
+        document.getElementById('room-code-input').addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') this.joinRoomByCode();
         });
         document.getElementById('chat-input').addEventListener('keypress', (e) => {
             if (e.key === 'Enter') this.sendMessage();
@@ -185,6 +193,9 @@ class LiarGame {
         this.isHost = true;
         this.players = [{ name: this.playerName, isHost: true }];
         
+        // 방 코드 표시
+        document.getElementById('room-code-display').textContent = this.roomId;
+        
         // 방 링크 생성
         const roomLink = `${window.location.origin}${window.location.pathname}?room=${this.roomId}`;
         document.getElementById('share-link').value = roomLink;
@@ -209,9 +220,30 @@ class LiarGame {
         this.showScreen('waiting');
     }
 
-    // 방 ID 생성
+    // 방 코드 생성 (6자리 특수문자 + 영어 조합)
     generateRoomId() {
-        return Math.random().toString(36).substring(2, 8).toUpperCase();
+        const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*';
+        let result = '';
+        for (let i = 0; i < 6; i++) {
+            result += chars.charAt(Math.floor(Math.random() * chars.length));
+        }
+        return result;
+    }
+
+    // 방 코드로 참가
+    joinRoomByCode() {
+        const roomCode = document.getElementById('room-code-input').value.trim().toUpperCase();
+        if (!roomCode) {
+            alert('방 코드를 입력해주세요.');
+            return;
+        }
+        if (roomCode.length !== 6) {
+            alert('방 코드는 6자리여야 합니다.');
+            return;
+        }
+        
+        this.roomId = roomCode;
+        this.showScreen('nickname');
     }
 
     // 방 링크 복사
@@ -237,6 +269,7 @@ class LiarGame {
         
         // 방 링크 표시 (대기실에서도 링크를 볼 수 있도록)
         if (this.roomId) {
+            document.getElementById('room-code-display-waiting').textContent = this.roomId;
             const roomLink = `${window.location.origin}${window.location.pathname}?room=${this.roomId}`;
             document.getElementById('share-link-waiting').value = roomLink;
             document.getElementById('room-link-waiting').classList.remove('hidden');

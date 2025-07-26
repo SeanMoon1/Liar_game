@@ -333,6 +333,40 @@ input[type="text"]:focus {
     border-left: 4px solid #ffc107;
 }
 
+.room-options {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 30px;
+    margin: 30px 0;
+}
+
+.room-option {
+    background: #f8f9fa;
+    padding: 30px;
+    border-radius: 15px;
+    text-align: center;
+    border: 2px solid #dee2e6;
+    transition: all 0.3s ease;
+}
+
+.room-option:hover {
+    border-color: #667eea;
+    transform: translateY(-5px);
+    box-shadow: 0 10px 25px rgba(102, 126, 234, 0.1);
+}
+
+.room-option h3 {
+    color: #333;
+    margin-bottom: 15px;
+    font-size: 1.5rem;
+}
+
+.room-option p {
+    color: #666;
+    margin-bottom: 20px;
+    line-height: 1.5;
+}
+
 .hidden {
     display: none !important;
 }
@@ -393,5 +427,14 @@ input[type="text"]:focus {
     .game-controls {
         flex-direction: column;
         align-items: center;
+    }
+    
+    .room-options {
+        grid-template-columns: 1fr;
+        gap: 20px;
+    }
+    
+    .room-option {
+        padding: 20px;
     }
 } 
