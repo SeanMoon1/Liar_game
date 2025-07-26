@@ -1,62 +1,83 @@
-// 전역 방 관리 시스템
+// API 기반 방 관리 시스템
 class RoomManager {
     constructor() {
-        this.rooms = new Map(); // 방 코드 -> 방 정보
+        this.baseUrl = '/api';
     }
 
     // 방 생성
-    createRoom(roomCode, hostName) {
-        const room = {
-            code: roomCode,
-            host: hostName,
-            players: [{ name: hostName, isHost: true }],
-            gameStarted: false,
-            topic: '',
-            liar: null,
-            messages: []
-        };
-        this.rooms.set(roomCode, room);
-        return room;
+    async createRoom(roomCode, hostName) {
+        try {
+            const response = await fetch(`${this.baseUrl}/rooms`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ roomCode, hostName })
+            });
+            
+            const data = await response.json();
+            if (data.success) {
+                return data.room;
+            } else {
+                throw new Error(data.error);
+            }
+        } catch (error) {
+            console.error('방 생성 실패:', error);
+            return null;
+        }
     }
 
     // 방 참가
-    joinRoom(roomCode, playerName) {
-        const room = this.rooms.get(roomCode);
-        if (!room) {
-            return null; // 방이 존재하지 않음
+    async joinRoom(roomCode, playerName) {
+        try {
+            const response = await fetch(`${this.baseUrl}/join`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ roomCode, playerName })
+            });
+            
+            const data = await response.json();
+            if (data.success) {
+                return data.room;
+            } else {
+                throw new Error(data.error);
+            }
+        } catch (error) {
+            console.error('방 참가 실패:', error);
+            return null;
         }
-        if (room.gameStarted) {
-            return null; // 게임이 이미 시작됨
-        }
-        
-        // 이미 같은 이름의 플레이어가 있는지 확인
-        const existingPlayer = room.players.find(p => p.name === playerName);
-        if (existingPlayer) {
-            return null; // 같은 이름의 플레이어가 이미 있음
-        }
-
-        room.players.push({ name: playerName, isHost: false });
-        return room;
     }
 
     // 방 정보 가져오기
-    getRoom(roomCode) {
-        return this.rooms.get(roomCode);
-    }
-
-    // 방 삭제
-    deleteRoom(roomCode) {
-        this.rooms.delete(roomCode);
+    async getRoom(roomCode) {
+        try {
+            const response = await fetch(`${this.baseUrl}/rooms?roomCode=${roomCode}`);
+            const data = await response.json();
+            if (data.success) {
+                return data.room;
+            } else {
+                return null;
+            }
+        } catch (error) {
+            console.error('방 정보 조회 실패:', error);
+            return null;
+        }
     }
 
     // 플레이어 제거
-    removePlayer(roomCode, playerName) {
-        const room = this.rooms.get(roomCode);
-        if (room) {
-            room.players = room.players.filter(p => p.name !== playerName);
-            if (room.players.length === 0) {
-                this.deleteRoom(roomCode);
-            }
+    async removePlayer(roomCode, playerName) {
+        try {
+            const response = await fetch(`${this.baseUrl}/join?roomCode=${roomCode}&playerName=${playerName}`, {
+                method: 'DELETE'
+            });
+            
+            const data = await response.json();
+            return data.success;
+        } catch (error) {
+            console.error('플레이어 제거 실패:', error);
+            return false;
         }
     }
 }
@@ -100,8 +121,8 @@ class LiarGame {
     }
 
     // 방 정보 업데이트
-    updateRoomInfo() {
-        const room = roomManager.getRoom(this.roomId);
+    async updateRoomInfo() {
+        const room = await roomManager.getRoom(this.roomId);
         if (room) {
             this.players = room.players;
             this.initializeWaitingRoom();
@@ -279,11 +300,11 @@ class LiarGame {
     }
 
     // 방 생성
-    createRoom() {
+    async createRoom() {
         this.roomId = this.generateRoomId();
         
         // 방 매니저에 방 생성
-        const room = roomManager.createRoom(this.roomId, this.playerName);
+        const room = await roomManager.createRoom(this.roomId, this.playerName);
         if (!room) {
             alert('방 생성에 실패했습니다. 다시 시도해주세요.');
             return;
@@ -304,9 +325,9 @@ class LiarGame {
     }
 
     // 기존 방 참가
-    joinExistingRoom() {
+    async joinExistingRoom() {
         // 방 매니저에서 방 정보 가져오기
-        const room = roomManager.getRoom(this.roomId);
+        const room = await roomManager.getRoom(this.roomId);
         if (!room) {
             alert('존재하지 않는 방입니다.');
             this.showScreen('room-select');
@@ -314,7 +335,7 @@ class LiarGame {
         }
         
         // 방에 참가
-        const joinedRoom = roomManager.joinRoom(this.roomId, this.playerName);
+        const joinedRoom = await roomManager.joinRoom(this.roomId, this.playerName);
         if (!joinedRoom) {
             alert('방 참가에 실패했습니다. 같은 이름의 플레이어가 있거나 게임이 이미 시작되었을 수 있습니다.');
             this.showScreen('room-select');
@@ -425,9 +446,9 @@ class LiarGame {
     }
 
     // 방 나가기
-    leaveRoom() {
+    async leaveRoom() {
         if (this.roomId && this.playerName) {
-            roomManager.removePlayer(this.roomId, this.playerName);
+            await roomManager.removePlayer(this.roomId, this.playerName);
         }
         
         this.roomId = '';

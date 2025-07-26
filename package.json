@@ -1,0 +1,21 @@
+{
+  "name": "liar-game",
+  "version": "1.0.0",
+  "description": "Online Liar Game with real-time multiplayer",
+  "main": "index.js",
+  "scripts": {
+    "dev": "vercel dev",
+    "build": "vercel build",
+    "deploy": "vercel --prod"
+  },
+  "dependencies": {
+    "socket.io": "^4.7.2",
+    "socket.io-client": "^4.7.2"
+  },
+  "devDependencies": {
+    "vercel": "^32.0.0"
+  },
+  "keywords": ["game", "multiplayer", "liar-game"],
+  "author": "seanmoon",
+  "license": "MIT"
+} 
