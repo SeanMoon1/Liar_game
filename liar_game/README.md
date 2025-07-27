@@ -1,146 +1,95 @@
-# 라이어 게임 (React 버전)
+# Liar Game
 
-거짓말쟁이를 찾아내는 소셜 게임입니다. React + TypeScript + Firebase로 구현되었습니다.
+실시간 멀티플레이어 라이어 게임입니다.
 
 ## 🎮 게임 규칙
 
 1. **게임 시작**: 방장이 주제를 선택하고 게임을 시작합니다.
-2. **라이어 선정**: 한 명의 플레이어가 랜덤으로 라이어로 선정됩니다.
-3. **키워드 배정**: 
-   - 일반 플레이어: 모두 같은 키워드를 받습니다
-   - 라이어: 비슷하지만 다른 키워드를 받습니다
-4. **대화**: 실시간 채팅으로 키워드에 대해 대화합니다.
-5. **투표**: 라이어를 찾아내기 위해 투표합니다.
-6. **승리 조건**:
-   - 일반 플레이어: 라이어를 찾아내면 승리
-   - 라이어: 들키지 않으면 승리
+2. **역할 배정**: 한 명이 라이어로 선정되고, 나머지는 일반 플레이어가 됩니다.
+3. **키워드 배정**: 일반 플레이어들은 같은 키워드를 받고, 라이어는 다른 키워드를 받습니다.
+4. **채팅**: 모든 플레이어가 키워드에 대해 대화합니다.
+5. **투표**: 라이어로 의심되는 플레이어를 투표합니다.
+6. **결과**: 라이어가 지목되면 시민 승리, 그렇지 않으면 라이어 승리입니다.
 
-## 🚀 기술 스택
+## 🛠️ 기술 스택
 
-- **Frontend**: React 19, TypeScript
-- **State Management**: Zustand
-- **Styling**: Tailwind CSS
+- **Frontend**: React 19, TypeScript, Tailwind CSS
 - **Backend**: Firebase Realtime Database
+- **State Management**: Zustand
 - **Deployment**: Firebase Hosting
 
 ## 📁 프로젝트 구조
 
 ```
 src/
-├── components/          # 재사용 가능한 컴포넌트
-│   ├── Button.tsx
-│   └── Input.tsx
-├── pages/              # 페이지 컴포넌트
-│   ├── HomePage.tsx
-│   └── RoomSelectPage.tsx
-├── store/              # 상태 관리
-│   └── gameStore.ts
-├── api/                # Firebase API
-│   └── firebase.ts
-├── utils/              # 유틸리티 함수
-│   └── keywords.ts
-├── types/              # TypeScript 타입 정의
-│   └── index.ts
-├── App.tsx
-└── index.tsx
+├── components/     # 재사용 가능한 컴포넌트
+├── pages/         # 페이지 컴포넌트
+├── store/         # Zustand 상태 관리
+├── api/           # Firebase API 함수
+├── utils/         # 유틸리티 함수
+└── types/         # TypeScript 타입 정의
 ```
 
-## 🛠️ 설치 및 실행
+## 🚀 설치 및 실행
 
 ### 1. 의존성 설치
 ```bash
 npm install
 ```
 
-### 2. Firebase 설정
-1. Firebase Console에서 새 프로젝트 생성
-2. Realtime Database 활성화
-3. `src/api/firebase.ts` 파일의 설정 정보 업데이트:
-   ```typescript
-   const firebaseConfig = {
-     apiKey: "your-api-key",
-     authDomain: "your-project.firebaseapp.com",
-     databaseURL: "https://your-project-default-rtdb.firebaseio.com",
-     projectId: "your-project",
-     storageBucket: "your-project.appspot.com",
-     messagingSenderId: "123456789",
-     appId: "your-app-id"
-   };
-   ```
+### 2. 환경 변수 설정
+프로젝트 루트에 `.env` 파일을 생성하고 다음 내용을 추가하세요:
+
+```env
+REACT_APP_FIREBASE_API_KEY=your_api_key_here
+REACT_APP_FIREBASE_AUTH_DOMAIN=your_project.firebaseapp.com
+REACT_APP_FIREBASE_DATABASE_URL=https://your_project-default-rtdb.firebaseio.com
+REACT_APP_FIREBASE_PROJECT_ID=your_project_id
+REACT_APP_FIREBASE_STORAGE_BUCKET=your_project.appspot.com
+REACT_APP_FIREBASE_MESSAGING_SENDER_ID=your_sender_id
+REACT_APP_FIREBASE_APP_ID=your_app_id
+REACT_APP_FIREBASE_MEASUREMENT_ID=your_measurement_id
+```
 
 ### 3. 개발 서버 실행
 ```bash
 npm start
 ```
 
-### 4. 빌드 및 배포
+### 4. 빌드
 ```bash
 npm run build
 ```
 
+### 5. Firebase 배포
+```bash
+firebase deploy
+```
+
+## 🔧 Firebase 설정
+
+1. Firebase Console에서 새 프로젝트를 생성합니다.
+2. Realtime Database를 활성화합니다.
+3. Hosting을 설정합니다.
+4. 환경 변수에 Firebase 설정 값을 입력합니다.
+
+## 🔒 보안
+
+- API 키는 환경 변수로 관리됩니다.
+- `.env` 파일은 `.gitignore`에 포함되어 GitHub에 업로드되지 않습니다.
+- Firebase 보안 규칙이 설정되어 있습니다.
+
+## 📝 주의사항
+
+- `.env` 파일을 직접 생성해야 합니다.
+- Firebase 프로젝트 설정이 필요합니다.
+- 환경 변수는 `REACT_APP_` 접두사로 시작해야 합니다.
+
 ## 🎯 주요 기능
 
-### ✅ 구현 완료
-- [x] 홈 화면
-- [x] 방 선택 (새 방 만들기 / 기존 방 참가)
-- [x] 닉네임 입력 (구조만)
-- [x] 대기실 (구조만)
-- [x] 주제 선택 (구조만)
-- [x] 게임 진행 (구조만)
-- [x] 투표 (구조만)
-- [x] 결과 화면 (구조만)
-- [x] Firebase 연동
-- [x] 상태 관리 (Zustand)
-- [x] TypeScript 타입 정의
-
-### 🚧 구현 예정
-- [ ] 닉네임 입력 기능
-- [ ] 대기실 실시간 플레이어 목록
-- [ ] 주제 선택 및 게임 시작
-- [ ] 실시간 채팅
-- [ ] 투표 시스템
-- [ ] 게임 결과 계산
-- [ ] 방 코드 복사 기능
-
-## 🔧 개발 환경 설정
-
-### 필수 요구사항
-- Node.js 16+
-- npm 또는 yarn
-
-### 권장 개발 도구
-- VS Code
-- React Developer Tools
-- Firebase CLI
-
-## 📝 주제 및 키워드
-
-게임에서 사용되는 주제들:
-- **정치**: 대통령, 국회, 정부, 민주주의, 선거, 정책, 법률, 외교
-- **경제**: 주식, 은행, 투자, 경제, 금융, 부동산, 무역, 인플레이션
-- **역사**: 고조선, 삼국시대, 고려, 조선, 일제강점기, 독립운동, 6.25전쟁, 민주화
-- **상식**: 지구, 태양, 달, 별, 우주, 은하수, 행성, 소행성
-- **문화**: 한복, 김치, 태권도, 판소리, 한글, 불교, 유교, 전통
-- **동물**: 호랑이, 곰, 사자, 코끼리, 기린, 팬더, 펭귄, 고래
-- **식물**: 소나무, 벚꽃, 장미, 해바라기, 튤립, 국화, 난초, 수국
-- **게임**: 롤, 오버워치, 마인크래프트, 포켓몬, 피파, 배틀그라운드, 스타크래프트, 디아블로
-- **영화**: 아바타, 타이타닉, 스타워즈, 해리포터, 반지의제왕, 인터스텔라, 인셉션, 어벤져스
-- **음악**: BTS, 블랙핑크, 아이유, 싸이, 빅뱅, 소녀시대, 엑소, 레드벨벳
-
-## 🔒 보안 주의사항
-
-- Firebase API 키는 절대 GitHub에 커밋하지 마세요
-- `.env` 파일을 사용하여 환경변수 관리
-- Firebase 보안 규칙 설정 필수
-
-## 📄 라이선스
-
-MIT License
-
-## 🤝 기여하기
-
-1. Fork the Project
-2. Create your Feature Branch (`git checkout -b feature/AmazingFeature`)
-3. Commit your Changes (`git commit -m 'Add some AmazingFeature'`)
-4. Push to the Branch (`git push origin feature/AmazingFeature`)
-5. Open a Pull Request
+- ✅ 실시간 멀티플레이어 게임
+- ✅ 방 생성 및 참가
+- ✅ 실시간 채팅
+- ✅ 투표 시스템
+- ✅ 게임 결과 표시
+- ✅ 반응형 디자인

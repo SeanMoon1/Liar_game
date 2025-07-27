@@ -2,17 +2,22 @@ import { initializeApp } from 'firebase/app';
 import { getDatabase, ref, set, get, push, onValue, off } from 'firebase/database';
 import { Player, Message, Room, Keywords } from '../types';
 
-// Firebase 설정
+// Firebase 설정 (환경 변수에서 가져오기)
 const firebaseConfig = {
-  apiKey: "AIzaSyDGW87yaMvluDtYT1TcWv2eBr_aTKKAeY4",
-  authDomain: "liar-game-f0259.firebaseapp.com",
-  databaseURL: "https://liar-game-f0259-default-rtdb.asia-southeast1.firebasedatabase.app",
-  projectId: "liar-game-f0259",
-  storageBucket: "liar-game-f0259.firebasestorage.app",
-  messagingSenderId: "283361737788",
-  appId: "1:283361737788:web:c7648ac80489c6e17d1739",
-  measurementId: "G-70VH9L0X49"
+  apiKey: process.env.REACT_APP_FIREBASE_API_KEY,
+  authDomain: process.env.REACT_APP_FIREBASE_AUTH_DOMAIN,
+  databaseURL: process.env.REACT_APP_FIREBASE_DATABASE_URL,
+  projectId: process.env.REACT_APP_FIREBASE_PROJECT_ID,
+  storageBucket: process.env.REACT_APP_FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: process.env.REACT_APP_FIREBASE_MESSAGING_SENDER_ID,
+  appId: process.env.REACT_APP_FIREBASE_APP_ID,
+  measurementId: process.env.REACT_APP_FIREBASE_MEASUREMENT_ID
 };
+
+// 환경 변수 검증
+if (!firebaseConfig.apiKey || !firebaseConfig.databaseURL) {
+  throw new Error('Firebase 환경 변수가 설정되지 않았습니다. .env 파일을 확인해주세요.');
+}
 
 // Firebase 초기화
 const app = initializeApp(firebaseConfig);
