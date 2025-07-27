@@ -8,6 +8,7 @@ const ResultPage: React.FC = () => {
     players, 
     playerName, 
     votes,
+    liarGuessResult,
     resetGame, 
     setScreen 
   } = useGameStore();
@@ -17,8 +18,15 @@ const ResultPage: React.FC = () => {
   const [isLiarVoted, setIsLiarVoted] = useState(false);
   const [isDraw, setIsDraw] = useState(false);
   const [maxVotes, setMaxVotes] = useState(0);
+  const [liarWonByGuess, setLiarWonByGuess] = useState(false);
 
   useEffect(() => {
+    // 라이어가 키워드를 정확히 추측했는지 확인
+    if (liarGuessResult?.isCorrect) {
+      setLiarWonByGuess(true);
+      return; // 키워드 추측으로 승리한 경우 투표 결과는 무시
+    }
+
     // 실제 투표 결과 계산
     const calculateVoteResult = () => {
       const counts: Record<string, number> = {};
@@ -56,7 +64,7 @@ const ResultPage: React.FC = () => {
     };
 
     calculateVoteResult();
-  }, [votes, gameData]);
+  }, [votes, gameData, liarGuessResult]);
 
   const handleNewGame = () => {
     resetGame();
@@ -119,43 +127,75 @@ const ResultPage: React.FC = () => {
             </div>
           </div>
 
-          <div className="vote-results">
-            <h3>투표 결과</h3>
-            <div className="vote-counts">
-              {Object.entries(voteCounts).map(([name, count]) => (
-                <div key={name} className={`vote-count ${name === votedPlayer ? 'voted' : ''}`}>
-                  <span className="player-name">{name}</span>
-                  <span className="vote-number">{count}표</span>
-                  {name === votedPlayer && <span className="voted-indicator">← 지목됨</span>}
-                </div>
-              ))}
+          {/* 라이어 키워드 추측 결과 */}
+          {liarGuessResult && (
+            <div className="liar-guess-result">
+              <h3>라이어 키워드 추측 결과</h3>
+              <div className={`guess-result ${liarGuessResult.isCorrect ? 'correct' : 'incorrect'}`}>
+                <p><strong>추측한 키워드:</strong> {liarGuessResult.guessedKeyword}</p>
+                <p><strong>실제 키워드:</strong> {gameData.actualNormalKeyword}</p>
+                {liarGuessResult.isCorrect ? (
+                  <p className="correct-guess">🎉 정확한 추측!</p>
+                ) : (
+                  <p className="incorrect-guess">❌ 틀린 추측</p>
+                )}
+              </div>
             </div>
-          </div>
+          )}
 
-          <div className="game-result">
-            <h3>게임 결과</h3>
-            <div className={`result-message ${isDraw ? 'draw' : isLiarVoted ? 'citizen-win' : 'liar-win'}`}>
-              {isDraw ? (
-                <div>
-                  <h4>🤝 무승부! 🤝</h4>
-                  <p>최다 득표자가 <strong>{maxVotes}표</strong>로 <strong>{Object.keys(voteCounts).filter(name => voteCounts[name] === maxVotes).length}명</strong>이 동점입니다.</p>
-                  <p>라이어를 정확히 찾지 못했습니다.</p>
-                </div>
-              ) : isLiarVoted ? (
-                <div>
-                  <h4>🎉 시민 승리! 🎉</h4>
-                  <p><strong>{votedPlayer}</strong>님이 라이어로 정확히 지목되었습니다!</p>
-                  <p>시민들이 라이어를 찾아냈습니다.</p>
-                </div>
-              ) : (
+          {/* 키워드 추측으로 라이어가 승리한 경우 */}
+          {liarWonByGuess ? (
+            <div className="game-result">
+              <h3>게임 결과</h3>
+              <div className="result-message liar-win">
                 <div>
                   <h4>🎭 라이어 승리! 🎭</h4>
-                  <p><strong>{votedPlayer}</strong>님이 라이어로 잘못 지목되었습니다.</p>
-                  <p>라이어가 성공적으로 속였습니다.</p>
+                  <p><strong>{gameData.liarKeyword}</strong>님이 정확한 키워드를 추측했습니다!</p>
+                  <p>라이어가 일반 플레이어의 키워드를 정확히 맞췄습니다.</p>
                 </div>
-              )}
+              </div>
             </div>
-          </div>
+          ) : (
+            <>
+              <div className="vote-results">
+                <h3>투표 결과</h3>
+                <div className="vote-counts">
+                  {Object.entries(voteCounts).map(([name, count]) => (
+                    <div key={name} className={`vote-count ${name === votedPlayer ? 'voted' : ''}`}>
+                      <span className="player-name">{name}</span>
+                      <span className="vote-number">{count}표</span>
+                      {name === votedPlayer && <span className="voted-indicator">← 지목됨</span>}
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div className="game-result">
+                <h3>게임 결과</h3>
+                <div className={`result-message ${isDraw ? 'draw' : isLiarVoted ? 'citizen-win' : 'liar-win'}`}>
+                  {isDraw ? (
+                    <div>
+                      <h4>🤝 무승부! 🤝</h4>
+                      <p>최다 득표자가 <strong>{maxVotes}표</strong>로 <strong>{Object.keys(voteCounts).filter(name => voteCounts[name] === maxVotes).length}명</strong>이 동점입니다.</p>
+                      <p>라이어를 정확히 찾지 못했습니다.</p>
+                    </div>
+                  ) : isLiarVoted ? (
+                    <div>
+                      <h4>🎉 시민 승리! 🎉</h4>
+                      <p><strong>{votedPlayer}</strong>님이 라이어로 정확히 지목되었습니다!</p>
+                      <p>시민들이 라이어를 찾아냈습니다.</p>
+                    </div>
+                  ) : (
+                    <div>
+                      <h4>🎭 라이어 승리! 🎭</h4>
+                      <p><strong>{votedPlayer}</strong>님이 라이어로 잘못 지목되었습니다.</p>
+                      <p>라이어가 성공적으로 속였습니다.</p>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </>
+          )}
 
           <div className="player-perspective">
             <h3>모든 플레이어 키워드</h3>
@@ -197,7 +237,9 @@ const ResultPage: React.FC = () => {
                 <div>
                   <p>당신은 <strong>라이어</strong>였습니다.</p>
                   <p>키워드: <strong>{gameData.keyword}</strong></p>
-                  {isDraw ? (
+                  {liarWonByGuess ? (
+                    <p className="result-text">🎉 승리: 정확한 키워드를 추측했습니다!</p>
+                  ) : isDraw ? (
                     <p className="result-text">🤝 무승부: 시민들이 라이어를 찾지 못했습니다.</p>
                   ) : isLiarVoted ? (
                     <p className="result-text">❌ 실패: 시민들에게 들켰습니다.</p>
@@ -209,7 +251,9 @@ const ResultPage: React.FC = () => {
                 <div>
                   <p>당신은 <strong>일반 플레이어</strong>였습니다.</p>
                   <p>키워드: <strong>{gameData.keyword}</strong></p>
-                  {isDraw ? (
+                  {liarWonByGuess ? (
+                    <p className="result-text">❌ 패배: 라이어가 키워드를 정확히 추측했습니다.</p>
+                  ) : isDraw ? (
                     <p className="result-text">🤝 무승부: 라이어를 찾지 못했습니다.</p>
                   ) : isLiarVoted ? (
                     <p className="result-text">✅ 성공: 라이어를 찾았습니다!</p>

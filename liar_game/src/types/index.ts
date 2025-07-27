@@ -19,14 +19,15 @@ export interface Room {
   host: string;
   players: Player[];
   gameStarted: boolean;
-  topic: string;
-  liar: string | null;
-  keywords: {
+  topic?: string;
+  liar?: string;
+  keywords?: {
     normal: string;
     liar: string;
-  } | null;
+  };
   messages: Message[];
   votes: Record<string, string>; // 투표 데이터 추가
+  liarGuesses?: Record<string, string>; // 라이어 추측 데이터 추가
   createdAt: number;
   maxPlayers: number;
 }
@@ -50,6 +51,7 @@ export interface GameState {
   selectedVote: string | null;
   messages: Message[];
   playerMessages: Record<string, Message[]>; // 플레이어별 메시지 목록
+  liarGuessResult?: { isCorrect: boolean; guessedKeyword: string }; // 라이어 키워드 추측 결과
 }
 
 export interface Keywords {

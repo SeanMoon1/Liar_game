@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useGameStore } from '../store/gameStore';
 import { getTopicName } from '../utils/keywords';
 
@@ -10,9 +10,8 @@ const GamePage: React.FC = () => {
     messages, 
     sendMessage, 
     subscribeToMessages, 
-    unsubscribe,
-    setScreen,
-    submitLiarGuess
+    submitLiarGuess,
+    setScreen
   } = useGameStore();
   
   const [messageInput, setMessageInput] = useState('');
@@ -23,7 +22,7 @@ const GamePage: React.FC = () => {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  // 게임 데이터 디버깅
+  // Game data debugging
   useEffect(() => {
     if (gameData) {
       console.log('GamePage - 게임 데이터:', {
@@ -36,37 +35,42 @@ const GamePage: React.FC = () => {
     }
   }, [gameData, playerName]);
 
-  // 메시지 구독 설정
+  // Message subscription setup (한 번만)
   useEffect(() => {
     if (roomId) {
+      console.log('GamePage: 메시지 구독 시작');
       subscribeToMessages(roomId);
     }
-    
-    return () => {
-      unsubscribe();
-    };
-  }, [roomId, subscribeToMessages, unsubscribe]);
+  }, [roomId]); // roomId만 의존성으로 설정
 
-  // 메시지 자동 스크롤
+  // Auto-scroll messages (최적화된 스크롤)
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages]);
+    const scrollToBottom = () => {
+      messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    };
+    
+    // 메시지가 추가될 때만 스크롤
+    if (messages.length > 0) {
+      scrollToBottom();
+    }
+  }, [messages.length]); // messages.length만 의존성으로 설정
 
-  // 컴포넌트 마운트 시 입력창에 포커스
+  // Focus on input field when component mounts
   useEffect(() => {
     if (inputRef.current) {
       inputRef.current.focus();
     }
   }, []);
 
-  const handleSendMessage = async () => {
-    if (!messageInput.trim()) return;
+  // 메시지 전송 최적화 (useCallback 사용)
+  const handleSendMessage = useCallback(async () => {
+    if (!messageInput.trim() || isLoading) return;
     
     setIsLoading(true);
     try {
       await sendMessage(messageInput);
       setMessageInput('');
-      // 메시지 전송 후 입력창에 포커스 유지
+      // Keep focus on input field after sending message
       setTimeout(() => {
         if (inputRef.current) {
           inputRef.current.focus();
@@ -78,16 +82,16 @@ const GamePage: React.FC = () => {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [messageInput, isLoading, sendMessage]);
 
-  const handleKeyPress = (e: React.KeyboardEvent) => {
+  const handleKeyPress = useCallback((e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
       handleSendMessage();
     }
-  };
+  }, [handleSendMessage]);
 
-  const handleGuessSubmit = async () => {
+  const handleGuessSubmit = useCallback(async () => {
     if (!guessedKeyword.trim()) return;
     
     try {
@@ -99,7 +103,7 @@ const GamePage: React.FC = () => {
       console.error('키워드 추측 제출 실패:', error);
       alert('키워드 추측 제출에 실패했습니다.');
     }
-  };
+  }, [guessedKeyword, submitLiarGuess]);
 
   if (!gameData) {
     return (
@@ -123,7 +127,7 @@ const GamePage: React.FC = () => {
           </div>
         </div>
 
-        {/* 라이어 키워드 추측 섹션 */}
+        {/* Liar Keyword Guess Section */}
         {gameData.isLiar && !hasGuessed && (
           <div className="liar-guess-section">
             <h3>일반 플레이어의 키워드를 추측해보세요!</h3>

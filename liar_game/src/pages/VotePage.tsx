@@ -11,6 +11,7 @@ const VotePage: React.FC = () => {
     selectVote, 
     confirmVote,
     submitVote,
+    submitLiarGuess,
     subscribeToVotes,
     subscribeToMessages,
     unsubscribe,
@@ -23,7 +24,10 @@ const VotePage: React.FC = () => {
   } = useGameStore();
   
   const [showVoteModal, setShowVoteModal] = useState(false);
+  const [showGuessModal, setShowGuessModal] = useState(false);
   const [hasVoted, setHasVoted] = useState(false);
+  const [hasGuessed, setHasGuessed] = useState(false);
+  const [guessedKeyword, setGuessedKeyword] = useState('');
   const [voteUnsubscribe, setVoteUnsubscribe] = useState<(() => void) | null>(null);
   const [messageInput, setMessageInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -90,7 +94,13 @@ const VotePage: React.FC = () => {
 
   const handleVoteClick = () => {
     console.log('투표 버튼 클릭됨, 모달 상태:', !showVoteModal);
-    setShowVoteModal(true);
+    
+    // 라이어인 경우 키워드 추측 모달 먼저 표시
+    if (gameData?.isLiar && !hasGuessed) {
+      setShowGuessModal(true);
+    } else {
+      setShowVoteModal(true);
+    }
   };
 
   const handlePlayerSelect = (playerName: string) => {
@@ -113,9 +123,43 @@ const VotePage: React.FC = () => {
     }
   };
 
+  const handleGuessSubmit = async () => {
+    if (!guessedKeyword.trim()) return;
+    
+    try {
+      await submitLiarGuess(guessedKeyword.trim());
+      setHasGuessed(true);
+      setShowGuessModal(false);
+      
+      // 추측이 정확한지 확인
+      const isCorrectGuess = guessedKeyword.trim().toLowerCase() === 
+        (gameData?.actualNormalKeyword || '').toLowerCase();
+      
+      if (isCorrectGuess) {
+        alert('🎉 정확한 키워드를 추측했습니다! 라이어 승리!');
+        // 즉시 결과화면으로 이동
+        setTimeout(() => {
+          setScreen('result');
+        }, 2000);
+      } else {
+        alert('키워드 추측이 완료되었습니다. 이제 투표를 진행하세요.');
+        // 투표 모달 표시
+        setShowVoteModal(true);
+      }
+    } catch (error) {
+      console.error('키워드 추측 제출 실패:', error);
+      alert('키워드 추측 제출에 실패했습니다.');
+    }
+  };
+
   const handleCancelVote = () => {
     console.log('투표 취소됨');
     setShowVoteModal(false);
+  };
+
+  const handleCancelGuess = () => {
+    console.log('키워드 추측 취소됨');
+    setShowGuessModal(false);
   };
 
   const handleSendMessage = async () => {
@@ -213,7 +257,7 @@ const VotePage: React.FC = () => {
               onClick={handleVoteClick}
               disabled={hasVoted}
             >
-              {hasVoted ? '투표 완료' : '투표하기'}
+              {gameData?.isLiar && !hasGuessed ? '키워드 추측하기' : hasVoted ? '투표 완료' : '투표하기'}
             </button>
             
             {selectedVote && !hasVoted && (
@@ -229,6 +273,12 @@ const VotePage: React.FC = () => {
           {selectedVote && (
             <div className="selected-vote">
               <p>선택한 플레이어: <strong>{selectedVote}</strong></p>
+            </div>
+          )}
+
+          {gameData?.isLiar && hasGuessed && (
+            <div className="guess-complete">
+              <p>✅ 키워드 추측이 완료되었습니다!</p>
             </div>
           )}
         </div>
@@ -312,6 +362,37 @@ const VotePage: React.FC = () => {
             </button>
           </div>
         </div>
+
+        {/* 키워드 추측 모달 */}
+        {showGuessModal && (
+          <div className="modal-overlay" onClick={handleCancelGuess}>
+            <div className="modal guess-modal" onClick={(e) => e.stopPropagation()}>
+              <h3>일반 플레이어의 키워드를 추측하세요!</h3>
+              <p>다른 플레이어들의 대화를 듣고 일반 플레이어들이 받은 키워드를 정확히 추측하면 라이어가 승리합니다!</p>
+              <div className="guess-input-modal">
+                <input
+                  type="text"
+                  value={guessedKeyword}
+                  onChange={(e) => setGuessedKeyword(e.target.value)}
+                  placeholder="추측하는 키워드를 입력하세요..."
+                  maxLength={20}
+                />
+              </div>
+              <div className="modal-buttons">
+                <button
+                  className="btn primary"
+                  onClick={handleGuessSubmit}
+                  disabled={!guessedKeyword.trim()}
+                >
+                  추측 제출
+                </button>
+                <button className="btn secondary" onClick={handleCancelGuess}>
+                  취소
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* 투표 모달 */}
         {showVoteModal && (

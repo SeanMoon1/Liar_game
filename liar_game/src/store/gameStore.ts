@@ -4,6 +4,13 @@ import { keywords } from '../utils/keywords';
 import * as firebaseApi from '../api/firebase';
 
 interface GameStore extends GameState {
+  // 구독 관리
+  subscriptions: {
+    room: (() => void) | null;
+    messages: (() => void) | null;
+    votes: (() => void) | null;
+  };
+  
   // 방 관련 상태
   isCreatingRoom: boolean;
   joiningRoomCode: string;
@@ -21,6 +28,7 @@ interface GameStore extends GameState {
   setMessages: (messages: Message[]) => void;
   addMessage: (message: Message) => void;
   setPlayerMessages: (playerMessages: Record<string, Message[]>) => void;
+  setLiarGuessResult: (result: { isCorrect: boolean; guessedKeyword: string }) => void;
   
   // 방 관련 액션
   setCreatingRoom: (isCreating: boolean) => void;
@@ -61,17 +69,25 @@ const initialState: GameState = {
   votes: {},
   selectedVote: null,
   messages: [],
-  playerMessages: {}
+  playerMessages: {},
+  liarGuessResult: undefined
 };
 
 export const useGameStore = create<GameStore>((set, get) => ({
   ...initialState,
   
+  // 구독 관리 상태 추가
+  subscriptions: {
+    room: null as (() => void) | null,
+    messages: null as (() => void) | null,
+    votes: null as (() => void) | null
+  },
+  
   // 방 관련 상태
   isCreatingRoom: false,
   joiningRoomCode: '',
   
-  // 기본 액션들
+  // 액션들
   setScreen: (screen) => set({ currentScreen: screen }),
   setPlayerName: (name) => set({ playerName: name }),
   setRoomId: (id) => set({ roomId: id }),
@@ -90,12 +106,13 @@ export const useGameStore = create<GameStore>((set, get) => ({
     }
   })),
   setPlayerMessages: (playerMessages) => set({ playerMessages }),
+  setLiarGuessResult: (result) => set({ liarGuessResult: result }),
   
   // 방 관련 액션
   setCreatingRoom: (isCreating) => set({ isCreatingRoom: isCreating }),
   setJoiningRoomCode: (code) => set({ joiningRoomCode: code }),
   
-  // 방 생성
+  // 게임 로직
   createRoom: async (playerName) => {
     try {
       const { generateRoomId } = await import('../utils/keywords');
@@ -116,7 +133,6 @@ export const useGameStore = create<GameStore>((set, get) => ({
     }
   },
   
-  // 방 참가
   joinRoom: async (roomCode, playerName) => {
     try {
       const success = await firebaseApi.joinRoom(roomCode, playerName);
@@ -148,12 +164,51 @@ export const useGameStore = create<GameStore>((set, get) => ({
     }
   },
   
-  // 방 나가기 (단순화)
   leaveRoom: () => {
-    set(initialState);
+    const { roomId, playerName, subscriptions } = get();
+    
+    // 모든 구독 해제
+    if (subscriptions.room) {
+      subscriptions.room();
+    }
+    if (subscriptions.messages) {
+      subscriptions.messages();
+    }
+    if (subscriptions.votes) {
+      subscriptions.votes();
+    }
+    
+    // Firebase에서 플레이어 제거
+    if (roomId && playerName) {
+      firebaseApi.removePlayer(roomId, playerName).catch(console.error);
+    }
+    
+    // 로컬 상태 초기화
+    set({
+      roomId: '',
+      playerName: '',
+      isHost: false,
+      players: [],
+      selectedTopic: '',
+      gameData: {
+        topic: '',
+        keyword: '',
+        isLiar: false,
+        liarKeyword: ''
+      },
+      votes: {},
+      selectedVote: null,
+      messages: [],
+      playerMessages: {},
+      liarGuessResult: undefined,
+      subscriptions: {
+        room: null,
+        messages: null,
+        votes: null
+      }
+    });
   },
   
-  // 게임 시작
   startGame: async () => {
     const { roomId, selectedTopic, players, playerName } = get();
     
@@ -268,19 +323,41 @@ export const useGameStore = create<GameStore>((set, get) => ({
   
   // 라이어 키워드 추측 제출
   submitLiarGuess: async (guessedKeyword) => {
-    const { roomId, playerName } = get();
+    const { roomId, playerName, gameData } = get();
     try {
       // Firebase에 라이어 추측 키워드 저장
       await firebaseApi.submitLiarGuess(roomId, playerName, guessedKeyword);
       
-      // 로컬 상태 업데이트
+      // 추측이 정확한지 확인
+      const isCorrectGuess = guessedKeyword.toLowerCase() === 
+        (gameData?.actualNormalKeyword || '').toLowerCase();
+      
+      // 추측 결과 저장
       set((state) => ({
         players: state.players.map(player => 
           player.name === playerName 
             ? { ...player, guessedKeyword }
             : player
-        )
+        ),
+        liarGuessResult: {
+          isCorrect: isCorrectGuess,
+          guessedKeyword
+        }
       }));
+      
+      console.log('라이어 추측 결과:', {
+        guessedKeyword,
+        actualKeyword: gameData?.actualNormalKeyword,
+        isCorrect: isCorrectGuess
+      });
+      
+      // 정확한 추측인 경우 즉시 결과화면으로 이동
+      if (isCorrectGuess) {
+        console.log('🎉 라이어가 정확한 키워드를 추측했습니다!');
+        setTimeout(() => {
+          set({ currentScreen: 'result' });
+        }, 2000);
+      }
     } catch (error) {
       console.error('라이어 추측 제출 실패:', error);
       throw error;
@@ -288,11 +365,40 @@ export const useGameStore = create<GameStore>((set, get) => ({
   },
   
   // 게임 리셋
-  resetGame: () => set(initialState),
+  resetGame: () => {
+    const { subscriptions } = get();
+    
+    // 모든 구독 해제
+    if (subscriptions.room) {
+      subscriptions.room();
+    }
+    if (subscriptions.messages) {
+      subscriptions.messages();
+    }
+    if (subscriptions.votes) {
+      subscriptions.votes();
+    }
+    
+    set({
+      ...initialState,
+      subscriptions: {
+        room: null,
+        messages: null,
+        votes: null
+      }
+    });
+  },
   
-  // 방 구독
+  // 방 구독 (최적화된 구독 관리)
   subscribeToRoom: (roomCode) => {
-    return firebaseApi.subscribeToRoom(roomCode, (room) => {
+    const { subscriptions } = get();
+    
+    // 기존 구독 해제
+    if (subscriptions.room) {
+      subscriptions.room();
+    }
+    
+    const unsubscribe = firebaseApi.subscribeToRoom(roomCode, (room) => {
       if (room) {
         const currentState = get();
         const currentPlayerName = currentState.playerName;
@@ -322,7 +428,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
           
           // 게임 데이터 설정
           const gameData = {
-            topic: room.topic,
+            topic: room.topic || '',
             keyword: isLiar ? (room.keywords?.liar || '') : (room.keywords?.normal || ''),
             isLiar,
             liarKeyword: room.liar || '',
@@ -355,11 +461,28 @@ export const useGameStore = create<GameStore>((set, get) => ({
         console.log('방 정보가 없음:', roomCode);
       }
     });
+    
+    // 구독 저장
+    set((state) => ({
+      subscriptions: {
+        ...state.subscriptions,
+        room: unsubscribe
+      }
+    }));
+    
+    return unsubscribe;
   },
   
-  // 메시지 구독
+  // 메시지 구독 (최적화된 구독 관리)
   subscribeToMessages: (roomCode) => {
-    return firebaseApi.subscribeToMessages(roomCode, (messages) => {
+    const { subscriptions } = get();
+    
+    // 기존 구독 해제
+    if (subscriptions.messages) {
+      subscriptions.messages();
+    }
+    
+    const unsubscribe = firebaseApi.subscribeToMessages(roomCode, (messages) => {
       set({ messages });
       
       // 플레이어별 메시지 분류
@@ -372,11 +495,28 @@ export const useGameStore = create<GameStore>((set, get) => ({
       });
       set({ playerMessages });
     });
+    
+    // 구독 저장
+    set((state) => ({
+      subscriptions: {
+        ...state.subscriptions,
+        messages: unsubscribe
+      }
+    }));
+    
+    return unsubscribe;
   },
   
-  // 투표 구독
+  // 투표 구독 (최적화된 구독 관리)
   subscribeToVotes: (roomCode) => {
-    return firebaseApi.subscribeToVotes(roomCode, (votes) => {
+    const { subscriptions } = get();
+    
+    // 기존 구독 해제
+    if (subscriptions.votes) {
+      subscriptions.votes();
+    }
+    
+    const unsubscribe = firebaseApi.subscribeToVotes(roomCode, (votes) => {
       set({ votes });
       
       // 투표 완료한 플레이어들 상태 업데이트
@@ -387,10 +527,38 @@ export const useGameStore = create<GameStore>((set, get) => ({
         }))
       }));
     });
+    
+    // 구독 저장
+    set((state) => ({
+      subscriptions: {
+        ...state.subscriptions,
+        votes: unsubscribe
+      }
+    }));
+    
+    return unsubscribe;
   },
   
-  // 구독 해제
+  // 구독 해제 (모든 구독 해제)
   unsubscribe: () => {
-    // Firebase 구독 해제는 각 구독 함수에서 처리됨
+    const { subscriptions } = get();
+    
+    if (subscriptions.room) {
+      subscriptions.room();
+    }
+    if (subscriptions.messages) {
+      subscriptions.messages();
+    }
+    if (subscriptions.votes) {
+      subscriptions.votes();
+    }
+    
+    set((state) => ({
+      subscriptions: {
+        room: null,
+        messages: null,
+        votes: null
+      }
+    }));
   }
 })); 

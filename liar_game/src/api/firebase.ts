@@ -1,5 +1,5 @@
 import { initializeApp } from 'firebase/app';
-import { getDatabase, ref, set, get, push, onValue, off } from 'firebase/database';
+import { getDatabase, ref, set, get, push, onValue, off, query, orderByChild, limitToLast } from 'firebase/database';
 import { Player, Message, Room, Keywords } from '../types';
 
 // Firebase 설정 (환경 변수에서 가져오기)
@@ -23,23 +23,37 @@ if (!firebaseConfig.apiKey || !firebaseConfig.databaseURL) {
 const app = initializeApp(firebaseConfig);
 const database = getDatabase(app);
 
-// 방 생성
+// 최적화된 방 데이터 구조
+interface OptimizedRoomData {
+  h: string; // host (방장)
+  p: { [key: string]: { n: string; h: boolean; o?: number } }; // players (플레이어들)
+  g: boolean; // gameStarted
+  t?: string; // topic
+  l?: string; // liar
+  k?: { n: string; l: string }; // keywords
+  c: number; // createdAt
+  v?: { [key: string]: string }; // votes
+  lg?: { [key: string]: string }; // liarGuesses
+}
+
+// 방 생성 (최적화된 데이터 구조)
 export const createRoom = async (roomCode: string, hostName: string): Promise<void> => {
   try {
     const roomRef = ref(database, `rooms/${roomCode}`);
-    await set(roomRef, {
-      host: hostName,
-      players: [{ name: hostName, isHost: true }],
-      gameStarted: false,
-      createdAt: Date.now()
-    });
+    const optimizedData: OptimizedRoomData = {
+      h: hostName,
+      p: { [hostName]: { n: hostName, h: true, o: 1 } },
+      g: false,
+      c: Date.now()
+    };
+    await set(roomRef, optimizedData);
   } catch (error) {
     console.error('방 생성 실패:', error);
     throw error;
   }
 };
 
-// 방 참가
+// 방 참가 (최적화된 데이터 구조)
 export const joinRoom = async (roomCode: string, playerName: string): Promise<boolean> => {
   try {
     const roomRef = ref(database, `rooms/${roomCode}`);
@@ -49,19 +63,26 @@ export const joinRoom = async (roomCode: string, playerName: string): Promise<bo
       throw new Error('존재하지 않는 방입니다.');
     }
     
-    const room = snapshot.val();
-    const existingPlayer = room.players?.find((p: Player) => p.name === playerName);
+    const room = snapshot.val() as OptimizedRoomData;
     
-    if (existingPlayer) {
+    // 이미 존재하는 플레이어인지 확인
+    if (room.p[playerName]) {
       throw new Error('이미 존재하는 닉네임입니다.');
     }
     
-    const newPlayer = { name: playerName, isHost: false };
-    const updatedPlayers = [...(room.players || []), newPlayer];
+    // 플레이어 순서 계산
+    const playerCount = Object.keys(room.p).length;
+    const newPlayerOrder = playerCount + 1;
+    
+    // 새로운 플레이어 추가
+    const updatedPlayers = {
+      ...room.p,
+      [playerName]: { n: playerName, h: false, o: newPlayerOrder }
+    };
     
     await set(roomRef, {
       ...room,
-      players: updatedPlayers
+      p: updatedPlayers
     });
     
     return true;
@@ -71,14 +92,36 @@ export const joinRoom = async (roomCode: string, playerName: string): Promise<bo
   }
 };
 
-// 방 정보 가져오기
+// 방 정보 가져오기 (최적화된 구조에서 변환)
 export const getRoom = async (roomCode: string): Promise<Room | null> => {
   try {
     const roomRef = ref(database, `rooms/${roomCode}`);
     const snapshot = await get(roomRef);
     
     if (snapshot.exists()) {
-      return snapshot.val();
+      const optimizedData = snapshot.val() as OptimizedRoomData;
+      
+      // 최적화된 데이터를 기존 구조로 변환
+      const players: Player[] = Object.entries(optimizedData.p).map(([key, player]) => ({
+        name: player.n,
+        isHost: player.h,
+        order: player.o
+      }));
+      
+      return {
+        code: roomCode,
+        host: optimizedData.h,
+        players,
+        gameStarted: optimizedData.g,
+        topic: optimizedData.t,
+        liar: optimizedData.l,
+        keywords: optimizedData.k ? { normal: optimizedData.k.n, liar: optimizedData.k.l } : undefined,
+        messages: [],
+        votes: optimizedData.v || {},
+        liarGuesses: optimizedData.lg || {},
+        createdAt: optimizedData.c,
+        maxPlayers: 10
+      };
     }
     return null;
   } catch (error) {
@@ -87,19 +130,19 @@ export const getRoom = async (roomCode: string): Promise<Room | null> => {
   }
 };
 
-// 플레이어 제거
+// 플레이어 제거 (최적화된 구조)
 export const removePlayer = async (roomCode: string, playerName: string): Promise<void> => {
   try {
     const roomRef = ref(database, `rooms/${roomCode}`);
     const snapshot = await get(roomRef);
     
     if (snapshot.exists()) {
-      const room = snapshot.val();
-      const updatedPlayers = room.players?.filter((p: Player) => p.name !== playerName) || [];
+      const room = snapshot.val() as OptimizedRoomData;
+      const { [playerName]: removed, ...remainingPlayers } = room.p;
       
       await set(roomRef, {
         ...room,
-        players: updatedPlayers
+        p: remainingPlayers
       });
     }
   } catch (error) {
@@ -108,15 +151,14 @@ export const removePlayer = async (roomCode: string, playerName: string): Promis
   }
 };
 
-// 메시지 전송
+// 메시지 전송 (최적화된 구조)
 export const sendMessage = async (roomCode: string, playerName: string, content: string): Promise<void> => {
   try {
-    const messagesRef = ref(database, `rooms/${roomCode}/messages`);
+    const messagesRef = ref(database, `rooms/${roomCode}/m`); // messages -> m으로 축약
     await push(messagesRef, {
-      playerName,
-      content,
-      timestamp: Date.now(),
-      type: 'chat'
+      p: playerName, // playerName -> p
+      c: content, // content -> c
+      t: Date.now() // timestamp -> t
     });
   } catch (error) {
     console.error('메시지 전송 실패:', error);
@@ -124,7 +166,7 @@ export const sendMessage = async (roomCode: string, playerName: string, content:
   }
 };
 
-// 게임 시작
+// 게임 시작 (최적화된 구조)
 export const startGame = async (
   roomCode: string,
   topic: string,
@@ -145,12 +187,12 @@ export const startGame = async (
     
     const updatedRoomData = {
       ...existingData,
-      gameStarted: true,
-      topic,
-      liar,
-      keywords,
-      messages: [],
-      votes: {} // 투표 데이터 초기화
+      g: true, // gameStarted -> g
+      t: topic, // topic -> t
+      l: liar, // liar -> l
+      k: { n: keywords.normal, l: keywords.liar }, // keywords -> k
+      m: [], // messages -> m
+      v: {} // votes -> v
     };
     
     console.log('🎮 Firebase에 저장할 방 데이터:', updatedRoomData);
@@ -164,7 +206,7 @@ export const startGame = async (
   }
 };
 
-// 방 실시간 구독
+// 방 실시간 구독 (최적화된 구조)
 export const subscribeToRoom = (roomCode: string, callback: (room: Room | null) => void) => {
   const roomRef = ref(database, `rooms/${roomCode}`);
   
@@ -172,7 +214,30 @@ export const subscribeToRoom = (roomCode: string, callback: (room: Room | null) 
   
   const unsubscribe = onValue(roomRef, (snapshot) => {
     if (snapshot.exists()) {
-      const roomData = snapshot.val();
+      const optimizedData = snapshot.val() as OptimizedRoomData;
+      
+      // 최적화된 데이터를 기존 구조로 변환
+      const players: Player[] = Object.entries(optimizedData.p).map(([key, player]) => ({
+        name: player.n,
+        isHost: player.h,
+        order: player.o
+      }));
+      
+      const roomData: Room = {
+        code: roomCode,
+        host: optimizedData.h,
+        players,
+        gameStarted: optimizedData.g,
+        topic: optimizedData.t,
+        liar: optimizedData.l,
+        keywords: optimizedData.k ? { normal: optimizedData.k.n, liar: optimizedData.k.l } : undefined,
+        messages: [], // 메시지는 별도 구독으로 처리
+        votes: optimizedData.v || {},
+        liarGuesses: optimizedData.lg || {},
+        createdAt: optimizedData.c,
+        maxPlayers: 10
+      };
+      
       console.log('🔥 Firebase 방 데이터 수신:', {
         roomCode,
         gameStarted: roomData.gameStarted,
@@ -190,17 +255,22 @@ export const subscribeToRoom = (roomCode: string, callback: (room: Room | null) 
   return unsubscribe;
 };
 
-// 메시지 실시간 구독
+// 메시지 실시간 구독 (최적화된 구조, 최근 50개만)
 export const subscribeToMessages = (roomCode: string, callback: (messages: Message[]) => void) => {
-  const messagesRef = ref(database, `rooms/${roomCode}/messages`);
+  const messagesRef = ref(database, `rooms/${roomCode}/m`);
+  const messagesQuery = query(messagesRef, orderByChild('t'), limitToLast(50)); // 최근 50개만
   
-  const unsubscribe = onValue(messagesRef, (snapshot) => {
+  const unsubscribe = onValue(messagesQuery, (snapshot) => {
     const messages: Message[] = [];
     if (snapshot.exists()) {
       snapshot.forEach((childSnapshot) => {
+        const data = childSnapshot.val();
         messages.push({
           id: childSnapshot.key!,
-          ...childSnapshot.val()
+          playerName: data.p,
+          content: data.c,
+          timestamp: data.t,
+          type: 'chat'
         });
       });
     }
@@ -210,11 +280,11 @@ export const subscribeToMessages = (roomCode: string, callback: (messages: Messa
   return unsubscribe;
 };
 
-// 투표 제출
+// 투표 제출 (최적화된 구조)
 export const submitVote = async (roomCode: string, voterName: string, votedPlayer: string): Promise<void> => {
   try {
-    const voteRef = ref(database, `rooms/${roomCode}/votes/${voterName}`);
-    await set(voteRef, votedPlayer); // 단순히 투표 대상 이름만 저장
+    const voteRef = ref(database, `rooms/${roomCode}/v/${voterName}`); // votes -> v
+    await set(voteRef, votedPlayer);
     
     console.log('투표 제출 성공:', { voter: voterName, votedFor: votedPlayer });
   } catch (error) {
@@ -223,9 +293,10 @@ export const submitVote = async (roomCode: string, voterName: string, votedPlaye
   }
 };
 
+// 라이어 추측 제출 (최적화된 구조)
 export const submitLiarGuess = async (roomCode: string, playerName: string, guessedKeyword: string): Promise<void> => {
   try {
-    const guessRef = ref(database, `rooms/${roomCode}/liarGuesses/${playerName}`);
+    const guessRef = ref(database, `rooms/${roomCode}/lg/${playerName}`); // liarGuesses -> lg
     await set(guessRef, guessedKeyword);
     console.log('라이어 추측 제출 성공:', { player: playerName, guessedKeyword });
   } catch (error) {
@@ -234,9 +305,9 @@ export const submitLiarGuess = async (roomCode: string, playerName: string, gues
   }
 };
 
-// 투표 실시간 구독
+// 투표 실시간 구독 (최적화된 구조)
 export const subscribeToVotes = (roomCode: string, callback: (votes: Record<string, string>) => void) => {
-  const votesRef = ref(database, `rooms/${roomCode}/votes`);
+  const votesRef = ref(database, `rooms/${roomCode}/v`); // votes -> v
   
   const unsubscribe = onValue(votesRef, (snapshot) => {
     const votes: Record<string, string> = {};
