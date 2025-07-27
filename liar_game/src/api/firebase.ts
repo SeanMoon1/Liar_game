@@ -109,12 +109,14 @@ export const removePlayer = async (roomCode: string, playerName: string): Promis
 };
 
 // 메시지 전송
-export const sendMessage = async (roomCode: string, message: Omit<Message, 'id' | 'timestamp'>): Promise<void> => {
+export const sendMessage = async (roomCode: string, playerName: string, content: string): Promise<void> => {
   try {
     const messagesRef = ref(database, `rooms/${roomCode}/messages`);
     await push(messagesRef, {
-      ...message,
-      timestamp: Date.now()
+      playerName,
+      content,
+      timestamp: Date.now(),
+      type: 'chat'
     });
   } catch (error) {
     console.error('메시지 전송 실패:', error);
@@ -193,6 +195,17 @@ export const submitVote = async (roomCode: string, voterName: string, votedPlaye
     console.log('투표 제출 성공:', { voter: voterName, votedFor: votedPlayer });
   } catch (error) {
     console.error('투표 제출 실패:', error);
+    throw error;
+  }
+};
+
+export const submitLiarGuess = async (roomCode: string, playerName: string, guessedKeyword: string): Promise<void> => {
+  try {
+    const guessRef = ref(database, `rooms/${roomCode}/liarGuesses/${playerName}`);
+    await set(guessRef, guessedKeyword);
+    console.log('라이어 추측 제출 성공:', { player: playerName, guessedKeyword });
+  } catch (error) {
+    console.error('라이어 추측 제출 실패:', error);
     throw error;
   }
 };

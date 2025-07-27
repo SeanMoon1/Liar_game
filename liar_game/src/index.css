@@ -573,6 +573,150 @@ input[type="text"]:focus {
   text-align: center;
 }
 
+/* 발표 순서 스타일 */
+.presentation-order {
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 10px;
+  padding: 20px;
+  margin: 20px 0;
+}
+
+.presentation-order h3 {
+  color: #fff;
+  margin-bottom: 15px;
+  text-align: center;
+}
+
+.order-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.order-item {
+  display: flex;
+  align-items: center;
+  background: rgba(255, 255, 255, 0.1);
+  padding: 10px 15px;
+  border-radius: 8px;
+  color: #fff;
+}
+
+.order-number {
+  font-weight: bold;
+  margin-right: 15px;
+  color: #ffd700;
+  min-width: 30px;
+}
+
+/* 모든 플레이어 키워드 스타일 */
+.all-keywords {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.player-keyword {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: rgba(255, 255, 255, 0.1);
+  padding: 12px 15px;
+  border-radius: 8px;
+  color: #fff;
+}
+
+.player-keyword .player-name {
+  font-weight: bold;
+}
+
+.player-keyword .keyword {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.liar-keyword {
+  color: #ff6b6b;
+  font-weight: bold;
+}
+
+.normal-keyword {
+  color: #4ecdc4;
+  font-weight: bold;
+}
+
+.liar-indicator {
+  color: #ff6b6b;
+  font-size: 0.9em;
+  font-weight: bold;
+}
+
+/* 무승부 결과 스타일 */
+.result-message.draw {
+  background: linear-gradient(135deg, #ffd700, #ffed4e);
+  color: #333;
+}
+
+.result-message.draw h4 {
+  color: #333;
+}
+
+/* 투표화면 채팅 컨테이너 조정 */
+.vote-section .chat-container {
+  margin-top: 20px;
+  height: 300px;
+}
+
+.vote-section .chat-container h3 {
+  color: #fff;
+  margin-bottom: 15px;
+  text-align: center;
+}
+
+/* 투표 결과 개선 */
+.vote-result {
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 10px;
+  padding: 20px;
+  margin-top: 20px;
+}
+
+.vote-result h3 {
+  color: #fff;
+  margin-bottom: 15px;
+  text-align: center;
+}
+
+.vote-progress {
+  text-align: center;
+  margin-bottom: 15px;
+}
+
+.vote-progress p {
+  color: #fff;
+  font-size: 1.1em;
+  font-weight: bold;
+}
+
+.waiting-message {
+  text-align: center;
+  color: #fff;
+  font-style: italic;
+}
+
+.result-message {
+  text-align: center;
+  padding: 15px;
+  border-radius: 8px;
+  margin-top: 15px;
+}
+
+.result-message p {
+  margin: 5px 0;
+  font-weight: bold;
+}
+
 /* 반응형 디자인 */
 @media (max-width: 768px) {
   body {
@@ -648,5 +792,238 @@ input[type="text"]:focus {
   
   .game-summary, .vote-results, .game-result, .player-perspective {
     padding: 15px;
+  }
+
+  .presentation-order {
+    padding: 15px;
+  }
+  
+  .order-item {
+    padding: 8px 12px;
+  }
+  
+  .player-keyword {
+    padding: 10px 12px;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 5px;
+  }
+  
+  .vote-section .chat-container {
+    height: 250px;
+  }
+}
+
+/* 라이어 키워드 추측 섹션 */
+.liar-guess-section {
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 10px;
+  padding: 20px;
+  margin: 20px 0;
+}
+
+.liar-guess-section h3 {
+  color: #fff;
+  margin-bottom: 10px;
+  text-align: center;
+}
+
+.liar-guess-section p {
+  color: #fff;
+  text-align: center;
+  margin-bottom: 15px;
+}
+
+.guess-input {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+
+.guess-input input {
+  flex: 1;
+  padding: 10px;
+  border: none;
+  border-radius: 5px;
+  font-size: 1rem;
+}
+
+.guess-complete {
+  background: rgba(76, 175, 80, 0.2);
+  border: 1px solid #4caf50;
+  border-radius: 10px;
+  padding: 15px;
+  margin: 20px 0;
+  text-align: center;
+}
+
+.guess-complete p {
+  color: #4caf50;
+  font-weight: bold;
+  margin: 0;
+}
+
+/* 플레이어별 메시지 섹션 */
+.player-messages-section {
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 10px;
+  padding: 20px;
+  margin: 20px 0;
+}
+
+.player-messages-section h3 {
+  color: #fff;
+  margin-bottom: 15px;
+  text-align: center;
+}
+
+.player-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  justify-content: center;
+}
+
+.player-message-btn {
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  border-radius: 8px;
+  padding: 10px 15px;
+  color: #fff;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.player-message-btn:hover {
+  background: rgba(255, 255, 255, 0.2);
+  border-color: rgba(255, 255, 255, 0.5);
+}
+
+.player-message-btn .player-name {
+  font-weight: bold;
+}
+
+.player-message-btn .message-count {
+  font-size: 0.9em;
+  opacity: 0.8;
+}
+
+/* 플레이어별 메시지 팝업 */
+.player-messages-modal {
+  max-width: 500px;
+  max-height: 80vh;
+  overflow-y: auto;
+}
+
+.player-messages-list {
+  max-height: 300px;
+  overflow-y: auto;
+  margin: 15px 0;
+}
+
+.player-message {
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  padding: 10px;
+  margin-bottom: 10px;
+}
+
+.player-message .message-time {
+  font-size: 0.8em;
+  color: rgba(255, 255, 255, 0.7);
+  margin-bottom: 5px;
+}
+
+.player-message .message-content {
+  color: #fff;
+  word-break: break-word;
+}
+
+/* 투표 완료 체크 표시 */
+.vote-check {
+  color: #4caf50;
+  font-size: 1.2em;
+  margin-left: auto;
+}
+
+/* 키워드 요약 섹션 */
+.keyword-summary {
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 10px;
+  padding: 20px;
+  margin: 20px 0;
+}
+
+.keyword-summary h3 {
+  color: #fff;
+  margin-bottom: 15px;
+  text-align: center;
+}
+
+.keyword-info {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+}
+
+.keyword-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: rgba(255, 255, 255, 0.1);
+  padding: 12px 15px;
+  border-radius: 8px;
+}
+
+.keyword-label {
+  color: #fff;
+  font-weight: bold;
+}
+
+.keyword-value {
+  font-weight: bold;
+  padding: 5px 10px;
+  border-radius: 5px;
+}
+
+.keyword-value.normal-keyword {
+  background: rgba(76, 205, 196, 0.3);
+  color: #4ecdc4;
+}
+
+.keyword-value.liar-keyword {
+  background: rgba(255, 107, 107, 0.3);
+  color: #ff6b6b;
+}
+
+/* 반응형 조정 */
+@media (max-width: 768px) {
+  .guess-input {
+    flex-direction: column;
+  }
+  
+  .guess-input input {
+    width: 100%;
+  }
+  
+  .player-list {
+    flex-direction: column;
+  }
+  
+  .player-message-btn {
+    justify-content: space-between;
+  }
+  
+  .keyword-item {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+  }
+  
+  .keyword-value {
+    align-self: flex-end;
   }
 }

@@ -1,6 +1,9 @@
 export interface Player {
   name: string;
   isHost: boolean;
+  order?: number; // 플레이어 순서
+  guessedKeyword?: string; // 라이어가 추측한 키워드
+  hasVoted?: boolean; // 투표 완료 여부
 }
 
 export interface Message {
@@ -40,10 +43,13 @@ export interface GameState {
     keyword: string;
     isLiar: boolean;
     liarKeyword: string;
+    actualNormalKeyword?: string; // 실제 일반 키워드
+    actualLiarKeyword?: string; // 실제 라이어 키워드
   };
   votes: Record<string, string>;
   selectedVote: string | null;
   messages: Message[];
+  playerMessages: Record<string, Message[]>; // 플레이어별 메시지 목록
 }
 
 export interface Keywords {

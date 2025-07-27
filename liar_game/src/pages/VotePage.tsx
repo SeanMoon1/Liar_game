@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useGameStore } from '../store/gameStore';
 import { getTopicName } from '../utils/keywords';
 
@@ -12,7 +12,12 @@ const VotePage: React.FC = () => {
     confirmVote,
     submitVote,
     subscribeToVotes,
+    subscribeToMessages,
+    unsubscribe,
     votes,
+    messages,
+    playerMessages,
+    sendMessage,
     roomId,
     setScreen 
   } = useGameStore();
@@ -20,18 +25,38 @@ const VotePage: React.FC = () => {
   const [showVoteModal, setShowVoteModal] = useState(false);
   const [hasVoted, setHasVoted] = useState(false);
   const [voteUnsubscribe, setVoteUnsubscribe] = useState<(() => void) | null>(null);
+  const [messageInput, setMessageInput] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+  const [showPlayerMessages, setShowPlayerMessages] = useState<string | null>(null);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
 
   // 투표 구독 설정
   useEffect(() => {
     if (roomId) {
-      const unsubscribe = subscribeToVotes(roomId);
-      setVoteUnsubscribe(() => unsubscribe);
+      const voteUnsub = subscribeToVotes(roomId);
+      const messageUnsub = subscribeToMessages(roomId);
+      setVoteUnsubscribe(() => voteUnsub);
       
       return () => {
-        if (unsubscribe) unsubscribe();
+        voteUnsub();
+        messageUnsub();
+        unsubscribe();
       };
     }
-  }, [roomId, subscribeToVotes]);
+  }, [roomId, subscribeToVotes, subscribeToMessages, unsubscribe]);
+
+  // 메시지 자동 스크롤
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [messages]);
+
+  // 컴포넌트 마운트 시 입력창에 포커스
+  useEffect(() => {
+    if (inputRef.current) {
+      inputRef.current.focus();
+    }
+  }, []);
 
   // 이미 투표했는지 확인
   useEffect(() => {
@@ -39,6 +64,29 @@ const VotePage: React.FC = () => {
       setHasVoted(true);
     }
   }, [votes, playerName]);
+
+  // 모든 플레이어가 투표했는지 확인하고 결과화면으로 이동
+  useEffect(() => {
+    if (votes && players.length > 0) {
+      const totalPlayers = players.length;
+      const votedPlayers = Object.keys(votes).length;
+      
+      console.log('투표 현황 체크:', { 
+        totalPlayers, 
+        votedPlayers, 
+        votes,
+        players: players.map(p => p.name)
+      });
+      
+      if (votedPlayers >= totalPlayers) {
+        console.log('모든 플레이어 투표 완료, 결과화면으로 이동');
+        // 3초 후 결과화면으로 이동
+        setTimeout(() => {
+          setScreen('result');
+        }, 3000);
+      }
+    }
+  }, [votes, players, setScreen]);
 
   const handleVoteClick = () => {
     console.log('투표 버튼 클릭됨, 모달 상태:', !showVoteModal);
@@ -57,11 +105,7 @@ const VotePage: React.FC = () => {
       try {
         await submitVote(selectedVote);
         setHasVoted(true);
-        
-        // 모든 플레이어가 투표했는지 확인
-        setTimeout(() => {
-          checkAllVotesComplete();
-        }, 1000);
+        console.log('투표 제출 완료');
       } catch (error) {
         console.error('투표 제출 실패:', error);
         alert('투표 제출에 실패했습니다.');
@@ -69,28 +113,45 @@ const VotePage: React.FC = () => {
     }
   };
 
-  const checkAllVotesComplete = () => {
-    const totalPlayers = players.length;
-    const votedPlayers = Object.keys(votes).length;
-    
-    console.log('투표 현황:', { 
-      totalPlayers, 
-      votedPlayers, 
-      votes,
-      players: players.map(p => p.name)
-    });
-    
-    if (votedPlayers >= totalPlayers) {
-      // 모든 플레이어가 투표 완료
-      setTimeout(() => {
-        setScreen('result');
-      }, 2000);
-    }
-  };
-
   const handleCancelVote = () => {
     console.log('투표 취소됨');
     setShowVoteModal(false);
+  };
+
+  const handleSendMessage = async () => {
+    if (!messageInput.trim()) return;
+    
+    setIsLoading(true);
+    try {
+      await sendMessage(messageInput);
+      setMessageInput('');
+      // 메시지 전송 후 입력창에 포커스 유지
+      setTimeout(() => {
+        if (inputRef.current) {
+          inputRef.current.focus();
+        }
+      }, 100);
+    } catch (error) {
+      console.error('메시지 전송 실패:', error);
+      alert('메시지 전송에 실패했습니다.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleKeyPress = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      handleSendMessage();
+    }
+  };
+
+  const handlePlayerClick = (playerName: string) => {
+    setShowPlayerMessages(playerName);
+  };
+
+  const handleClosePlayerMessages = () => {
+    setShowPlayerMessages(null);
   };
 
   // 실제 투표 결과 계산
@@ -118,6 +179,17 @@ const VotePage: React.FC = () => {
 
   const voteResult = calculateVoteResult();
   const isAllVotesComplete = voteResult.totalVotes >= voteResult.totalPlayers;
+
+  // 발표 순서 생성 (플레이어 순서를 섞어서 랜덤하게)
+  const getPresentationOrder = () => {
+    const shuffledPlayers = [...players].sort(() => Math.random() - 0.5);
+    return shuffledPlayers.map((player, index) => ({
+      ...player,
+      order: index + 1
+    }));
+  };
+
+  const presentationOrder = getPresentationOrder();
 
   return (
     <div className="screen">
@@ -161,6 +233,86 @@ const VotePage: React.FC = () => {
           )}
         </div>
 
+        {/* 발표 순서 표시 */}
+        <div className="presentation-order">
+          <h3>발표 순서</h3>
+          <div className="order-list">
+            {presentationOrder.map((player) => (
+              <div key={player.name} className="order-item">
+                <span className="order-number">{player.order}.</span>
+                <span className="player-name">{player.name}</span>
+                {player.hasVoted && <span className="vote-check">✅</span>}
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* 플레이어별 메시지 목록 */}
+        <div className="player-messages-section">
+          <h3>플레이어별 발언 목록</h3>
+          <div className="player-list">
+            {players.map((player) => (
+              <button
+                key={player.name}
+                className="player-message-btn"
+                onClick={() => handlePlayerClick(player.name)}
+              >
+                <span className="player-name">{player.name}</span>
+                <span className="message-count">
+                  ({playerMessages[player.name]?.length || 0}개)
+                </span>
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* 실시간 채팅 */}
+        <div className="chat-container">
+          <h3>실시간 채팅</h3>
+          <div className="messages">
+            {messages.length === 0 ? (
+              <div className="no-messages">
+                <p>채팅을 시작해보세요!</p>
+              </div>
+            ) : (
+              messages.map((message) => (
+                <div 
+                  key={message.id} 
+                  className={`message ${message.playerName === playerName ? 'own' : ''}`}
+                >
+                  <div className="message-header">
+                    <span className="player-name">{message.playerName}</span>
+                    <span className="timestamp">
+                      {new Date(message.timestamp).toLocaleTimeString()}
+                    </span>
+                  </div>
+                  <div className="message-content">{message.content}</div>
+                </div>
+              ))
+            )}
+            <div ref={messagesEndRef} />
+          </div>
+
+          <div className="message-input">
+            <input
+              ref={inputRef}
+              type="text"
+              value={messageInput}
+              onChange={(e) => setMessageInput(e.target.value)}
+              onKeyPress={handleKeyPress}
+              placeholder="메시지를 입력하세요..."
+              disabled={isLoading}
+            />
+            <button
+              className="btn primary"
+              onClick={handleSendMessage}
+              disabled={isLoading || !messageInput.trim()}
+            >
+              전송
+            </button>
+          </div>
+        </div>
+
         {/* 투표 모달 */}
         {showVoteModal && (
           <div className="modal-overlay" onClick={handleCancelVote}>
@@ -182,6 +334,34 @@ const VotePage: React.FC = () => {
               <div className="modal-buttons">
                 <button className="btn secondary" onClick={handleCancelVote}>
                   취소
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* 플레이어별 메시지 팝업 */}
+        {showPlayerMessages && (
+          <div className="modal-overlay" onClick={handleClosePlayerMessages}>
+            <div className="modal player-messages-modal" onClick={(e) => e.stopPropagation()}>
+              <h3>{showPlayerMessages}님의 발언 목록</h3>
+              <div className="player-messages-list">
+                {playerMessages[showPlayerMessages]?.length > 0 ? (
+                  playerMessages[showPlayerMessages].map((message) => (
+                    <div key={message.id} className="player-message">
+                      <div className="message-time">
+                        {new Date(message.timestamp).toLocaleTimeString()}
+                      </div>
+                      <div className="message-content">{message.content}</div>
+                    </div>
+                  ))
+                ) : (
+                  <p className="no-messages">발언한 메시지가 없습니다.</p>
+                )}
+              </div>
+              <div className="modal-buttons">
+                <button className="btn secondary" onClick={handleClosePlayerMessages}>
+                  닫기
                 </button>
               </div>
             </div>
@@ -211,7 +391,7 @@ const VotePage: React.FC = () => {
             {isAllVotesComplete ? (
               <div className="result-message">
                 <p><strong>{voteResult.votedPlayer}</strong>님이 라이어로 지목되었습니다.</p>
-                <p>결과 화면으로 이동합니다...</p>
+                <p>3초 후 결과 화면으로 이동합니다...</p>
               </div>
             ) : (
               <div className="waiting-message">
