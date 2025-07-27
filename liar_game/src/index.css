@@ -577,13 +577,11 @@ input[type="text"]:focus {
 @media (max-width: 768px) {
   body {
     padding: 10px;
-    min-height: 100vh;
   }
   
   .screen {
     padding: 20px;
     min-height: 500px;
-    border-radius: 10px;
   }
   
   h1 {
@@ -596,29 +594,26 @@ input[type="text"]:focus {
   
   .button-group {
     flex-direction: column;
-    gap: 10px;
+    align-items: center;
   }
   
   .btn {
     width: 100%;
     max-width: 300px;
-    padding: 15px 20px;
-    font-size: 1rem;
   }
   
   .input-group {
     flex-direction: column;
-    gap: 10px;
+    align-items: center;
   }
   
   input[type="text"] {
-    width: 100%;
-    padding: 15px;
-    font-size: 16px; /* 모바일에서 자동 확대 방지 */
+    min-width: 100%;
+    max-width: 100%;
   }
   
   .topics-grid {
-    grid-template-columns: 1fr;
+    grid-template-columns: repeat(2, 1fr);
   }
   
   .chat-container {
@@ -627,7 +622,6 @@ input[type="text"]:focus {
   
   .message-input {
     flex-direction: column;
-    gap: 10px;
   }
   
   .message-input button {
@@ -635,19 +629,17 @@ input[type="text"]:focus {
   }
   
   .modal {
-    width: 95%;
-    max-width: 400px;
     padding: 20px;
+    width: 95%;
   }
   
   .vote-player-btn {
-    padding: 15px;
-    font-size: 1rem;
+    padding: 12px;
+    font-size: 0.9em;
   }
   
   .vote-count {
-    padding: 10px;
-    font-size: 0.9rem;
+    padding: 8px 12px;
   }
   
   .result-content {
@@ -655,36 +647,6 @@ input[type="text"]:focus {
   }
   
   .game-summary, .vote-results, .game-result, .player-perspective {
-    padding: 15px;
-  }
-}
-
-/* 매우 작은 화면 */
-@media (max-width: 480px) {
-  .screen {
-    padding: 15px;
-    min-height: 450px;
-  }
-  
-  h1 {
-    font-size: 1.8rem;
-  }
-  
-  h2 {
-    font-size: 1.3rem;
-  }
-  
-  .btn {
-    padding: 12px 16px;
-    font-size: 0.9rem;
-  }
-  
-  .chat-container {
-    height: 350px;
-  }
-  
-  .modal {
-    width: 98%;
     padding: 15px;
   }
 }
