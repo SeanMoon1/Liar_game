@@ -8,7 +8,9 @@ const WaitingPage: React.FC = () => {
     isHost, 
     roomId, 
     leaveRoom,
-    playerName 
+    playerName,
+    subscribeToRoom,
+    unsubscribe
   } = useGameStore();
   
   const [roomCode, setRoomCode] = useState('');
@@ -16,7 +18,19 @@ const WaitingPage: React.FC = () => {
   useEffect(() => {
     // 방 코드 설정
     setRoomCode(roomId || 'ABC123');
-  }, [roomId]);
+    
+    // Firebase 실시간 구독 시작
+    if (roomId) {
+      console.log('WaitingPage: Firebase 구독 시작', roomId);
+      const unsubscribeFn = subscribeToRoom(roomId);
+      
+      // 컴포넌트 언마운트 시 구독 해제
+      return () => {
+        console.log('WaitingPage: Firebase 구독 해제');
+        unsubscribeFn();
+      };
+    }
+  }, [roomId, subscribeToRoom]);
 
   const handleStartGame = () => {
     if (isHost) {
@@ -25,6 +39,12 @@ const WaitingPage: React.FC = () => {
   };
 
   const handleLeaveRoom = () => {
+    // Firebase에서 플레이어 제거
+    if (roomId && playerName) {
+      // Firebase API를 통해 플레이어 제거 (나중에 구현)
+      console.log('플레이어 방 나가기:', playerName);
+    }
+    
     leaveRoom();
     setScreen('home');
   };
@@ -48,19 +68,23 @@ const WaitingPage: React.FC = () => {
         </div>
         
         <div className="players-list">
-          {players.map((player, index) => (
-            <div 
-              key={index} 
-              className={`player-card ${player.isHost ? 'host' : ''}`}
-            >
-              <div className="player-info">
-                <div className="player-name">{player.name}</div>
-                <div className="player-status">
-                  {player.isHost ? '방장' : '참가자'}
+          {players.length === 0 ? (
+            <p>플레이어 목록을 불러오는 중...</p>
+          ) : (
+            players.map((player, index) => (
+              <div 
+                key={index} 
+                className={`player-card ${player.isHost ? 'host' : ''}`}
+              >
+                <div className="player-info">
+                  <div className="player-name">{player.name}</div>
+                  <div className="player-status">
+                    {player.isHost ? '방장' : '참가자'}
+                  </div>
                 </div>
               </div>
-            </div>
-          ))}
+            ))
+          )}
         </div>
         
         <div className="room-link">
@@ -86,7 +110,7 @@ const WaitingPage: React.FC = () => {
             <button
               className="btn primary"
               onClick={handleStartGame}
-              disabled={false} // 혼자서도 게임 시작 가능하도록 수정
+              disabled={false}
             >
               게임 시작
             </button>

@@ -5,10 +5,8 @@ import { generateRoomId } from '../utils/keywords';
 const NicknamePage: React.FC = () => {
   const { 
     setScreen, 
-    setPlayerName, 
-    setPlayers, 
-    setIsHost, 
-    setRoomId,
+    createRoom,
+    joinRoom,
     isCreatingRoom,
     joiningRoomCode
   } = useGameStore();
@@ -28,42 +26,33 @@ const NicknamePage: React.FC = () => {
 
     setIsLoading(true);
     try {
-      // 플레이어 정보 설정
-      setPlayerName(nickname);
-      
       if (isCreatingRoom) {
         // 방 생성 모드
-        setIsHost(true);
+        console.log('방 생성 중...');
+        const roomCode = await createRoom(nickname);
         
-        // 임시 플레이어 목록 생성 (방장)
-        const tempPlayers = [
-          { name: nickname, isHost: true }
-        ];
-        setPlayers(tempPlayers);
+        if (!roomCode) {
+          throw new Error('방 생성에 실패했습니다.');
+        }
         
-        // 랜덤 방 ID 생성
-        const tempRoomId = generateRoomId();
-        setRoomId(tempRoomId);
+        console.log('방 생성 성공:', roomCode);
       } else {
         // 방 참가 모드
-        setIsHost(false);
+        console.log('방 참가 중:', joiningRoomCode);
+        const success = await joinRoom(joiningRoomCode, nickname);
         
-        // 임시 플레이어 목록 생성 (기존 플레이어 + 새 플레이어)
-        const tempPlayers = [
-          { name: '기존플레이어', isHost: true },
-          { name: nickname, isHost: false }
-        ];
-        setPlayers(tempPlayers);
+        if (!success) {
+          throw new Error('방 참가에 실패했습니다.');
+        }
         
-        // 참가하려는 방 ID 설정
-        setRoomId(joiningRoomCode);
+        console.log('방 참가 성공');
       }
       
-      // 대기실로 이동
+      // 대기실로 이동 (GameStore에서 이미 설정됨)
       setScreen('waiting');
     } catch (error) {
       console.error('게임 참가 실패:', error);
-      alert('게임 참가에 실패했습니다.');
+      alert(error instanceof Error ? error.message : '게임 참가에 실패했습니다.');
     } finally {
       setIsLoading(false);
     }

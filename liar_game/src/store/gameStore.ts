@@ -36,8 +36,8 @@ interface GameStore extends GameState {
   resetGame: () => void;
   
   // 구독 관리
-  subscribeToRoom: (roomCode: string) => void;
-  subscribeToMessages: (roomCode: string) => void;
+  subscribeToRoom: (roomCode: string) => (() => void);
+  subscribeToMessages: (roomCode: string) => (() => void);
   unsubscribe: () => void;
 }
 
