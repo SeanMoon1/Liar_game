@@ -1,0 +1,179 @@
+import { initializeApp } from 'firebase/app';
+import { getDatabase, ref, set, get, push, onValue, off } from 'firebase/database';
+import { Player, Message, Room, Keywords } from '../types';
+
+// Firebase 설정
+const firebaseConfig = {
+  apiKey: "AIzaSyDGW87yaMvluDtYT1TcWv2eBr_aTKKAeY4",
+  authDomain: "liar-game-f0259.firebaseapp.com",
+  databaseURL: "https://liar-game-f0259-default-rtdb.asia-southeast1.firebasedatabase.app",
+  projectId: "liar-game-f0259",
+  storageBucket: "liar-game-f0259.firebasestorage.app",
+  messagingSenderId: "283361737788",
+  appId: "1:283361737788:web:c7648ac80489c6e17d1739",
+  measurementId: "G-70VH9L0X49"
+};
+
+// Firebase 초기화
+const app = initializeApp(firebaseConfig);
+const database = getDatabase(app);
+
+// 방 생성
+export const createRoom = async (roomCode: string, hostName: string): Promise<void> => {
+  try {
+    const roomRef = ref(database, `rooms/${roomCode}`);
+    await set(roomRef, {
+      host: hostName,
+      players: [{ name: hostName, isHost: true }],
+      gameStarted: false,
+      createdAt: Date.now()
+    });
+  } catch (error) {
+    console.error('방 생성 실패:', error);
+    throw error;
+  }
+};
+
+// 방 참가
+export const joinRoom = async (roomCode: string, playerName: string): Promise<boolean> => {
+  try {
+    const roomRef = ref(database, `rooms/${roomCode}`);
+    const snapshot = await get(roomRef);
+    
+    if (!snapshot.exists()) {
+      throw new Error('존재하지 않는 방입니다.');
+    }
+    
+    const room = snapshot.val();
+    const existingPlayer = room.players?.find((p: Player) => p.name === playerName);
+    
+    if (existingPlayer) {
+      throw new Error('이미 존재하는 닉네임입니다.');
+    }
+    
+    const newPlayer = { name: playerName, isHost: false };
+    const updatedPlayers = [...(room.players || []), newPlayer];
+    
+    await set(roomRef, {
+      ...room,
+      players: updatedPlayers
+    });
+    
+    return true;
+  } catch (error) {
+    console.error('방 참가 실패:', error);
+    throw error;
+  }
+};
+
+// 방 정보 가져오기
+export const getRoom = async (roomCode: string): Promise<Room | null> => {
+  try {
+    const roomRef = ref(database, `rooms/${roomCode}`);
+    const snapshot = await get(roomRef);
+    
+    if (snapshot.exists()) {
+      return snapshot.val();
+    }
+    return null;
+  } catch (error) {
+    console.error('방 정보 가져오기 실패:', error);
+    throw error;
+  }
+};
+
+// 플레이어 제거
+export const removePlayer = async (roomCode: string, playerName: string): Promise<void> => {
+  try {
+    const roomRef = ref(database, `rooms/${roomCode}`);
+    const snapshot = await get(roomRef);
+    
+    if (snapshot.exists()) {
+      const room = snapshot.val();
+      const updatedPlayers = room.players?.filter((p: Player) => p.name !== playerName) || [];
+      
+      await set(roomRef, {
+        ...room,
+        players: updatedPlayers
+      });
+    }
+  } catch (error) {
+    console.error('플레이어 제거 실패:', error);
+    throw error;
+  }
+};
+
+// 메시지 전송
+export const sendMessage = async (roomCode: string, message: Omit<Message, 'id' | 'timestamp'>): Promise<void> => {
+  try {
+    const messagesRef = ref(database, `rooms/${roomCode}/messages`);
+    await push(messagesRef, {
+      ...message,
+      timestamp: Date.now()
+    });
+  } catch (error) {
+    console.error('메시지 전송 실패:', error);
+    throw error;
+  }
+};
+
+// 게임 시작
+export const startGame = async (
+  roomCode: string,
+  topic: string,
+  liar: string,
+  keywords: { normal: string; liar: string }
+): Promise<void> => {
+  try {
+    const roomRef = ref(database, `rooms/${roomCode}`);
+    const snapshot = await get(roomRef);
+    const existingData = snapshot.exists() ? snapshot.val() : {};
+    
+    await set(roomRef, {
+      ...existingData,
+      gameStarted: true,
+      topic,
+      liar,
+      keywords,
+      messages: []
+    });
+  } catch (error) {
+    console.error('게임 시작 실패:', error);
+    throw error;
+  }
+};
+
+// 방 실시간 구독
+export const subscribeToRoom = (roomCode: string, callback: (room: Room | null) => void) => {
+  const roomRef = ref(database, `rooms/${roomCode}`);
+  
+  const unsubscribe = onValue(roomRef, (snapshot) => {
+    if (snapshot.exists()) {
+      callback(snapshot.val());
+    } else {
+      callback(null);
+    }
+  });
+  
+  return unsubscribe;
+};
+
+// 메시지 실시간 구독
+export const subscribeToMessages = (roomCode: string, callback: (messages: Message[]) => void) => {
+  const messagesRef = ref(database, `rooms/${roomCode}/messages`);
+  
+  const unsubscribe = onValue(messagesRef, (snapshot) => {
+    const messages: Message[] = [];
+    if (snapshot.exists()) {
+      snapshot.forEach((childSnapshot) => {
+        messages.push({
+          id: childSnapshot.key!,
+          ...childSnapshot.val()
+        });
+      });
+    }
+    callback(messages);
+  });
+  
+  return unsubscribe;
+}; 

@@ -3,13 +3,6 @@
     "rooms": {
       "$roomCode": {
         ".read": true,
-        ".write": true,
-        ".validate": "newData.hasChildren(['code', 'host', 'players', 'gameStarted'])"
-      }
-    },
-    "messages": {
-      "$roomCode": {
-        ".read": true,
         ".write": true
       }
     }
