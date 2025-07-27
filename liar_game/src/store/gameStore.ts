@@ -178,7 +178,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
       subscriptions.votes();
     }
     
-    // Firebase에서 플레이어 제거
+    // Firebase에서 플레이어 제거 (빈 방 정리 포함)
     if (roomId && playerName) {
       firebaseApi.removePlayer(roomId, playerName).catch(console.error);
     }
@@ -413,49 +413,54 @@ export const useGameStore = create<GameStore>((set, get) => ({
           liar: room.liar
         });
         
-        // 플레이어 순서 유지하면서 업데이트
-        const updatedPlayers = room.players.map((player, index) => ({
-          ...player,
-          order: player.order || index + 1
-        }));
-        
-        // 게임이 시작되었는지 확인
-        if (room.gameStarted) {
-          console.log('🎮 게임 시작 상태 감지!');
+        try {
+          // 플레이어 순서 유지하면서 업데이트
+          const updatedPlayers = (room.players || []).map((player, index) => ({
+            ...player,
+            order: player.order || index + 1
+          }));
           
-          // 현재 플레이어가 라이어인지 확인
-          const isLiar = room.liar === currentPlayerName;
-          
-          // 게임 데이터 설정
-          const gameData = {
-            topic: room.topic || '',
-            keyword: isLiar ? (room.keywords?.liar || '') : (room.keywords?.normal || ''),
-            isLiar,
-            liarKeyword: room.liar || '',
-            actualNormalKeyword: room.keywords?.normal || '',
-            actualLiarKeyword: room.keywords?.liar || ''
-          };
+          // 게임이 시작되었는지 확인
+          if (room.gameStarted) {
+            console.log('🎮 게임 시작 상태 감지!');
+            
+            // 현재 플레이어가 라이어인지 확인
+            const isLiar = room.liar === currentPlayerName;
+            
+            // 게임 데이터 설정
+            const gameData = {
+              topic: room.topic || '',
+              keyword: isLiar ? (room.keywords?.liar || '') : (room.keywords?.normal || ''),
+              isLiar,
+              liarKeyword: room.liar || '',
+              actualNormalKeyword: room.keywords?.normal || '',
+              actualLiarKeyword: room.keywords?.liar || ''
+            };
 
-          console.log('게임 데이터 설정:', gameData);
+            console.log('게임 데이터 설정:', gameData);
 
-          // 즉시 화면 전환
-          set({
-            players: updatedPlayers,
-            votes: room.votes || {},
-            gameData,
-            currentScreen: 'game'
-          });
+            // 즉시 화면 전환
+            set({
+              players: updatedPlayers,
+              votes: room.votes || {},
+              gameData,
+              currentScreen: 'game'
+            });
 
-          console.log('✅ 게임 화면으로 즉시 전환 완료:', {
-            gameData,
-            currentScreen: 'game'
-          });
-        } else {
-          // 게임이 시작되지 않은 경우 플레이어 목록만 업데이트
-          set({
-            players: updatedPlayers,
-            votes: room.votes || {}
-          });
+            console.log('✅ 게임 화면으로 즉시 전환 완료:', {
+              gameData,
+              currentScreen: 'game'
+            });
+          } else {
+            // 게임이 시작되지 않은 경우 플레이어 목록만 업데이트
+            set({
+              players: updatedPlayers,
+              votes: room.votes || {}
+            });
+          }
+        } catch (error) {
+          console.error('방 구독 데이터 처리 실패:', error);
+          console.error('받은 방 데이터:', room);
         }
       } else {
         console.log('방 정보가 없음:', roomCode);
@@ -483,6 +488,11 @@ export const useGameStore = create<GameStore>((set, get) => ({
     }
     
     const unsubscribe = firebaseApi.subscribeToMessages(roomCode, (messages) => {
+      console.log('💬 메시지 구독 업데이트:', {
+        totalMessages: messages.length,
+        messages: messages.map(m => ({ player: m.playerName, content: m.content.substring(0, 20) + '...' }))
+      });
+      
       set({ messages });
       
       // 플레이어별 메시지 분류
@@ -493,6 +503,15 @@ export const useGameStore = create<GameStore>((set, get) => ({
         }
         playerMessages[message.playerName].push(message);
       });
+      
+      console.log('💬 플레이어별 메시지 분류:', {
+        playerCount: Object.keys(playerMessages).length,
+        playerMessages: Object.entries(playerMessages).map(([player, msgs]) => ({
+          player,
+          messageCount: msgs.length
+        }))
+      });
+      
       set({ playerMessages });
     });
     

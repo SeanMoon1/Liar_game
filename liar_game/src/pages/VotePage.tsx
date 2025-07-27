@@ -191,10 +191,16 @@ const VotePage: React.FC = () => {
   };
 
   const handlePlayerClick = (playerName: string) => {
+    console.log('👤 플레이어 클릭:', {
+      playerName,
+      messageCount: playerMessages[playerName]?.length || 0,
+      hasMessages: !!playerMessages[playerName]?.length
+    });
     setShowPlayerMessages(playerName);
   };
 
   const handleClosePlayerMessages = () => {
+    console.log('❌ 플레이어 메시지 팝업 닫기');
     setShowPlayerMessages(null);
   };
 
@@ -224,10 +230,11 @@ const VotePage: React.FC = () => {
   const voteResult = calculateVoteResult();
   const isAllVotesComplete = voteResult.totalVotes >= voteResult.totalPlayers;
 
-  // 발표 순서 생성 (플레이어 순서를 섞어서 랜덤하게)
+  // 발표 순서 생성 (안정적인 순서)
   const getPresentationOrder = () => {
-    const shuffledPlayers = [...players].sort(() => Math.random() - 0.5);
-    return shuffledPlayers.map((player, index) => ({
+    // 플레이어 이름으로 정렬하여 안정적인 순서 생성
+    const sortedPlayers = [...players].sort((a, b) => a.name.localeCompare(b.name));
+    return sortedPlayers.map((player, index) => ({
       ...player,
       order: index + 1
     }));
@@ -301,18 +308,25 @@ const VotePage: React.FC = () => {
         <div className="player-messages-section">
           <h3>플레이어별 발언 목록</h3>
           <div className="player-list">
-            {players.map((player) => (
-              <button
-                key={player.name}
-                className="player-message-btn"
-                onClick={() => handlePlayerClick(player.name)}
-              >
-                <span className="player-name">{player.name}</span>
-                <span className="message-count">
-                  ({playerMessages[player.name]?.length || 0}개)
-                </span>
-              </button>
-            ))}
+            {players.map((player) => {
+              const messageCount = playerMessages[player.name]?.length || 0;
+              return (
+                <button
+                  key={player.name}
+                  className={`player-message-btn ${messageCount > 0 ? 'has-messages' : 'no-messages'}`}
+                  onClick={() => handlePlayerClick(player.name)}
+                >
+                  <span className="player-name">{player.name}</span>
+                  <span className="message-count">
+                    ({messageCount}개)
+                  </span>
+                  {messageCount > 0 && <span className="message-indicator">💬</span>}
+                </button>
+              );
+            })}
+          </div>
+          <div className="debug-info">
+            <p>총 플레이어: {players.length}명, 메시지가 있는 플레이어: {Object.keys(playerMessages).filter(player => playerMessages[player]?.length > 0).length}명</p>
           </div>
         </div>
 
