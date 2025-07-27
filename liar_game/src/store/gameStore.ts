@@ -193,15 +193,17 @@ export const useGameStore = create<GameStore>((set, get) => ({
       
       // 로컬 게임 데이터 설정
       const isLiar = liar.name === playerName;
+      const gameData = {
+        topic: selectedTopic,
+        keyword: isLiar ? liarKeyword : normalKeyword,
+        isLiar,
+        liarKeyword: liar.name, // 실제 라이어의 이름 저장
+        actualNormalKeyword: normalKeyword, // 실제 일반 키워드 저장
+        actualLiarKeyword: liarKeyword // 실제 라이어 키워드 저장
+      };
+      
       set({
-        gameData: {
-          topic: selectedTopic,
-          keyword: isLiar ? liarKeyword : normalKeyword,
-          isLiar,
-          liarKeyword: liar.name, // 실제 라이어의 이름 저장
-          actualNormalKeyword: normalKeyword, // 실제 일반 키워드 저장
-          actualLiarKeyword: liarKeyword // 실제 라이어 키워드 저장
-        },
+        gameData,
         votes: {}, // 투표 데이터 초기화
         currentScreen: 'game'
       });
@@ -212,7 +214,8 @@ export const useGameStore = create<GameStore>((set, get) => ({
         isLiar,
         keyword: isLiar ? liarKeyword : normalKeyword,
         actualNormalKeyword: normalKeyword,
-        actualLiarKeyword: liarKeyword
+        actualLiarKeyword: liarKeyword,
+        currentScreen: 'game'
       });
       
     } catch (error) {
@@ -291,16 +294,65 @@ export const useGameStore = create<GameStore>((set, get) => ({
   subscribeToRoom: (roomCode) => {
     return firebaseApi.subscribeToRoom(roomCode, (room) => {
       if (room) {
+        const currentState = get();
+        const currentPlayerName = currentState.playerName;
+        
+        console.log('방 구독 업데이트:', {
+          roomCode,
+          currentPlayer: currentPlayerName,
+          currentScreen: currentState.currentScreen,
+          gameStarted: room.gameStarted,
+          players: room.players?.length || 0,
+          topic: room.topic,
+          liar: room.liar
+        });
+        
         // 플레이어 순서 유지하면서 업데이트
         const updatedPlayers = room.players.map((player, index) => ({
           ...player,
           order: player.order || index + 1
         }));
         
-        set({
-          players: updatedPlayers,
-          votes: room.votes || {}
-        });
+        // 게임이 시작되었는지 확인
+        if (room.gameStarted) {
+          console.log('🎮 게임 시작 상태 감지!');
+          
+          // 현재 플레이어가 라이어인지 확인
+          const isLiar = room.liar === currentPlayerName;
+          
+          // 게임 데이터 설정
+          const gameData = {
+            topic: room.topic,
+            keyword: isLiar ? (room.keywords?.liar || '') : (room.keywords?.normal || ''),
+            isLiar,
+            liarKeyword: room.liar || '',
+            actualNormalKeyword: room.keywords?.normal || '',
+            actualLiarKeyword: room.keywords?.liar || ''
+          };
+
+          console.log('게임 데이터 설정:', gameData);
+
+          // 즉시 화면 전환
+          set({
+            players: updatedPlayers,
+            votes: room.votes || {},
+            gameData,
+            currentScreen: 'game'
+          });
+
+          console.log('✅ 게임 화면으로 즉시 전환 완료:', {
+            gameData,
+            currentScreen: 'game'
+          });
+        } else {
+          // 게임이 시작되지 않은 경우 플레이어 목록만 업데이트
+          set({
+            players: updatedPlayers,
+            votes: room.votes || {}
+          });
+        }
+      } else {
+        console.log('방 정보가 없음:', roomCode);
       }
     });
   },

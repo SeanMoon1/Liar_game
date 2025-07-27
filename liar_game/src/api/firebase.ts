@@ -132,11 +132,18 @@ export const startGame = async (
   keywords: { normal: string; liar: string }
 ): Promise<void> => {
   try {
+    console.log('🎮 Firebase 게임 시작 요청:', {
+      roomCode,
+      topic,
+      liar,
+      keywords
+    });
+    
     const roomRef = ref(database, `rooms/${roomCode}`);
     const snapshot = await get(roomRef);
     const existingData = snapshot.exists() ? snapshot.val() : {};
     
-    await set(roomRef, {
+    const updatedRoomData = {
       ...existingData,
       gameStarted: true,
       topic,
@@ -144,9 +151,15 @@ export const startGame = async (
       keywords,
       messages: [],
       votes: {} // 투표 데이터 초기화
-    });
+    };
+    
+    console.log('🎮 Firebase에 저장할 방 데이터:', updatedRoomData);
+    
+    await set(roomRef, updatedRoomData);
+    
+    console.log('✅ Firebase 게임 시작 성공!');
   } catch (error) {
-    console.error('게임 시작 실패:', error);
+    console.error('❌ Firebase 게임 시작 실패:', error);
     throw error;
   }
 };
@@ -155,10 +168,21 @@ export const startGame = async (
 export const subscribeToRoom = (roomCode: string, callback: (room: Room | null) => void) => {
   const roomRef = ref(database, `rooms/${roomCode}`);
   
+  console.log('🔥 Firebase 방 구독 시작:', roomCode);
+  
   const unsubscribe = onValue(roomRef, (snapshot) => {
     if (snapshot.exists()) {
-      callback(snapshot.val());
+      const roomData = snapshot.val();
+      console.log('🔥 Firebase 방 데이터 수신:', {
+        roomCode,
+        gameStarted: roomData.gameStarted,
+        topic: roomData.topic,
+        liar: roomData.liar,
+        playersCount: roomData.players?.length || 0
+      });
+      callback(roomData);
     } else {
+      console.log('🔥 Firebase 방 데이터 없음:', roomCode);
       callback(null);
     }
   });

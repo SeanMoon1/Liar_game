@@ -10,7 +10,8 @@ const WaitingPage: React.FC = () => {
     leaveRoom,
     playerName,
     subscribeToRoom,
-    unsubscribe
+    unsubscribe,
+    currentScreen
   } = useGameStore();
   
   const [roomCode, setRoomCode] = useState('');
@@ -21,19 +22,35 @@ const WaitingPage: React.FC = () => {
     
     // Firebase 실시간 구독 시작
     if (roomId) {
-      console.log('WaitingPage: Firebase 구독 시작', roomId);
+      console.log('🔄 WaitingPage: Firebase 구독 시작', {
+        roomId,
+        playerName,
+        isHost,
+        currentScreen
+      });
+      
       const unsubscribeFn = subscribeToRoom(roomId);
       
       // 컴포넌트 언마운트 시 구독 해제
       return () => {
-        console.log('WaitingPage: Firebase 구독 해제');
+        console.log('🔄 WaitingPage: Firebase 구독 해제');
         unsubscribeFn();
       };
     }
-  }, [roomId, subscribeToRoom]);
+  }, [roomId, subscribeToRoom, playerName, isHost, currentScreen]);
+
+  // 화면 전환 감지
+  useEffect(() => {
+    console.log('🔄 WaitingPage: 화면 상태 변경 감지', {
+      currentScreen,
+      roomId,
+      playerName
+    });
+  }, [currentScreen, roomId, playerName]);
 
   const handleStartGame = () => {
     if (isHost) {
+      console.log('🎮 방장이 게임 시작 버튼 클릭');
       setScreen('topic');
     }
   };
@@ -42,7 +59,7 @@ const WaitingPage: React.FC = () => {
     // Firebase에서 플레이어 제거
     if (roomId && playerName) {
       // Firebase API를 통해 플레이어 제거 (나중에 구현)
-      console.log('플레이어 방 나가기:', playerName);
+      console.log('🚪 플레이어 방 나가기:', playerName);
     }
     
     leaveRoom();
@@ -65,6 +82,7 @@ const WaitingPage: React.FC = () => {
         <div className="room-info">
           <p>방장: <span>{host?.name || '로딩 중...'}</span></p>
           <p>전체 인원: <span>{playerCount}</span>명</p>
+          <p>현재 화면: <span>{currentScreen}</span></p>
         </div>
         
         <div className="players-list">
