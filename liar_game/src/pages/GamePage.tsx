@@ -18,6 +18,19 @@ const GamePage: React.FC = () => {
   const [isLoading, setIsLoading] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
+  // 게임 데이터 디버깅
+  useEffect(() => {
+    if (gameData) {
+      console.log('GamePage - 게임 데이터:', {
+        playerName,
+        topic: gameData.topic,
+        keyword: gameData.keyword,
+        isLiar: gameData.isLiar,
+        liarKeyword: gameData.liarKeyword
+      });
+    }
+  }, [gameData, playerName]);
+
   // 메시지 구독 설정
   useEffect(() => {
     if (roomId) {

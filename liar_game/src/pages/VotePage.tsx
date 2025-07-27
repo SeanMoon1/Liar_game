@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useGameStore } from '../store/gameStore';
 import { getTopicName } from '../utils/keywords';
 
@@ -10,11 +10,35 @@ const VotePage: React.FC = () => {
     selectedVote, 
     selectVote, 
     confirmVote,
+    submitVote,
+    subscribeToVotes,
+    votes,
+    roomId,
     setScreen 
   } = useGameStore();
   
   const [showVoteModal, setShowVoteModal] = useState(false);
   const [hasVoted, setHasVoted] = useState(false);
+  const [voteUnsubscribe, setVoteUnsubscribe] = useState<(() => void) | null>(null);
+
+  // 투표 구독 설정
+  useEffect(() => {
+    if (roomId) {
+      const unsubscribe = subscribeToVotes(roomId);
+      setVoteUnsubscribe(() => unsubscribe);
+      
+      return () => {
+        if (unsubscribe) unsubscribe();
+      };
+    }
+  }, [roomId, subscribeToVotes]);
+
+  // 이미 투표했는지 확인
+  useEffect(() => {
+    if (votes && playerName && votes[playerName]) {
+      setHasVoted(true);
+    }
+  }, [votes, playerName]);
 
   const handleVoteClick = () => {
     console.log('투표 버튼 클릭됨, 모달 상태:', !showVoteModal);
@@ -27,12 +51,37 @@ const VotePage: React.FC = () => {
     setShowVoteModal(false);
   };
 
-  const handleConfirmVote = () => {
+  const handleConfirmVote = async () => {
     if (selectedVote) {
       console.log('투표 확정됨:', selectedVote);
-      confirmVote();
-      setHasVoted(true);
-      // 잠시 후 결과 화면으로 이동
+      try {
+        await submitVote(selectedVote);
+        setHasVoted(true);
+        
+        // 모든 플레이어가 투표했는지 확인
+        setTimeout(() => {
+          checkAllVotesComplete();
+        }, 1000);
+      } catch (error) {
+        console.error('투표 제출 실패:', error);
+        alert('투표 제출에 실패했습니다.');
+      }
+    }
+  };
+
+  const checkAllVotesComplete = () => {
+    const totalPlayers = players.length;
+    const votedPlayers = Object.keys(votes).length;
+    
+    console.log('투표 현황:', { 
+      totalPlayers, 
+      votedPlayers, 
+      votes,
+      players: players.map(p => p.name)
+    });
+    
+    if (votedPlayers >= totalPlayers) {
+      // 모든 플레이어가 투표 완료
       setTimeout(() => {
         setScreen('result');
       }, 2000);
@@ -44,24 +93,31 @@ const VotePage: React.FC = () => {
     setShowVoteModal(false);
   };
 
-  // 투표 결과 계산 (임시로 랜덤하게 처리)
+  // 실제 투표 결과 계산
   const calculateVoteResult = () => {
     const voteCounts: Record<string, number> = {};
-    players.forEach(player => {
-      voteCounts[player.name] = Math.floor(Math.random() * 3) + 1; // 임시 랜덤 투표
+    
+    // 각 플레이어별 투표 수 계산 (단순화된 구조)
+    Object.entries(votes).forEach(([voterName, votedFor]) => {
+      voteCounts[votedFor] = (voteCounts[votedFor] || 0) + 1;
     });
     
-    const maxVotes = Math.max(...Object.values(voteCounts));
+    console.log('투표 결과 계산:', { votes, voteCounts });
+    
+    // 최다 득표자 찾기
+    const maxVotes = Math.max(...Object.values(voteCounts), 0);
     const votedPlayers = Object.keys(voteCounts).filter(name => voteCounts[name] === maxVotes);
     
     return {
-      votedPlayer: votedPlayers[0],
-      voteCounts
+      votedPlayer: votedPlayers[0] || '없음',
+      voteCounts,
+      totalVotes: Object.keys(votes).length,
+      totalPlayers: players.length
     };
   };
 
   const voteResult = calculateVoteResult();
-  const isLiarVoted = voteResult.votedPlayer === gameData?.liarKeyword;
+  const isAllVotesComplete = voteResult.totalVotes >= voteResult.totalPlayers;
 
   return (
     <div className="screen">
@@ -132,21 +188,36 @@ const VotePage: React.FC = () => {
           </div>
         )}
 
-        {/* 투표 결과 (임시) */}
+        {/* 투표 결과 */}
         {hasVoted && (
           <div className="vote-result">
-            <h3>투표 결과</h3>
-            <div className="vote-counts">
-              {Object.entries(voteResult.voteCounts).map(([name, count]) => (
-                <div key={name} className="vote-count">
-                  <span>{name}: {count}표</span>
-                </div>
-              ))}
+            <h3>투표 현황</h3>
+            <div className="vote-progress">
+              <p>투표 완료: {voteResult.totalVotes}/{voteResult.totalPlayers}명</p>
             </div>
-            <div className="result-message">
-              <p><strong>{voteResult.votedPlayer}</strong>님이 라이어로 지목되었습니다.</p>
-              <p>결과를 확인하는 중...</p>
-            </div>
+            
+            {Object.keys(voteResult.voteCounts).length > 0 && (
+              <div className="vote-counts">
+                <h4>현재 투표 결과:</h4>
+                {Object.entries(voteResult.voteCounts).map(([name, count]) => (
+                  <div key={name} className="vote-count">
+                    <span>{name}: {count}표</span>
+                    {name === voteResult.votedPlayer && <span className="voted-indicator">← 지목됨</span>}
+                  </div>
+                ))}
+              </div>
+            )}
+            
+            {isAllVotesComplete ? (
+              <div className="result-message">
+                <p><strong>{voteResult.votedPlayer}</strong>님이 라이어로 지목되었습니다.</p>
+                <p>결과 화면으로 이동합니다...</p>
+              </div>
+            ) : (
+              <div className="waiting-message">
+                <p>다른 플레이어들의 투표를 기다리는 중...</p>
+              </div>
+            )}
           </div>
         )}
       </div>

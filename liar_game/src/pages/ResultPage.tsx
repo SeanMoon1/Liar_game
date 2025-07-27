@@ -7,6 +7,7 @@ const ResultPage: React.FC = () => {
     gameData, 
     players, 
     playerName, 
+    votes,
     resetGame, 
     setScreen 
   } = useGameStore();
@@ -16,26 +17,37 @@ const ResultPage: React.FC = () => {
   const [isLiarVoted, setIsLiarVoted] = useState(false);
 
   useEffect(() => {
-    // 투표 결과 계산 (실제로는 Firebase에서 가져와야 함)
+    // 실제 투표 결과 계산
     const calculateVoteResult = () => {
       const counts: Record<string, number> = {};
-      players.forEach(player => {
-        counts[player.name] = Math.floor(Math.random() * 3) + 1;
+      
+      // 각 플레이어별 투표 수 계산 (단순화된 구조)
+      Object.entries(votes).forEach(([voterName, votedFor]) => {
+        counts[votedFor] = (counts[votedFor] || 0) + 1;
       });
       
-      const maxVotes = Math.max(...Object.values(counts));
+      // 최다 득표자 찾기
+      const maxVotes = Math.max(...Object.values(counts), 0);
       const votedPlayers = Object.keys(counts).filter(name => counts[name] === maxVotes);
       
       setVoteCounts(counts);
-      setVotedPlayer(votedPlayers[0]);
+      setVotedPlayer(votedPlayers[0] || '없음');
       
-      // 실제 라이어와 비교
-      const actualLiar = players.find(p => p.name === gameData?.liarKeyword);
-      setIsLiarVoted(votedPlayers[0] === actualLiar?.name);
+      // 실제 라이어와 비교 (gameData.liarKeyword는 실제 라이어의 이름)
+      const actualLiar = gameData?.liarKeyword;
+      setIsLiarVoted(votedPlayers[0] === actualLiar);
+      
+      console.log('결과 계산:', {
+        votes,
+        counts,
+        votedPlayer: votedPlayers[0],
+        actualLiar,
+        isLiarVoted: votedPlayers[0] === actualLiar
+      });
     };
 
     calculateVoteResult();
-  }, [players, gameData]);
+  }, [votes, gameData]);
 
   const handleNewGame = () => {
     resetGame();

@@ -23,6 +23,7 @@ export interface Room {
     liar: string;
   } | null;
   messages: Message[];
+  votes: Record<string, string>; // 투표 데이터 추가
   createdAt: number;
   maxPlayers: number;
 }

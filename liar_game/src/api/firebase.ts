@@ -140,7 +140,8 @@ export const startGame = async (
       topic,
       liar,
       keywords,
-      messages: []
+      messages: [],
+      votes: {} // 투표 데이터 초기화
     });
   } catch (error) {
     console.error('게임 시작 실패:', error);
@@ -178,6 +179,39 @@ export const subscribeToMessages = (roomCode: string, callback: (messages: Messa
       });
     }
     callback(messages);
+  });
+  
+  return unsubscribe;
+};
+
+// 투표 제출
+export const submitVote = async (roomCode: string, voterName: string, votedPlayer: string): Promise<void> => {
+  try {
+    const voteRef = ref(database, `rooms/${roomCode}/votes/${voterName}`);
+    await set(voteRef, votedPlayer); // 단순히 투표 대상 이름만 저장
+    
+    console.log('투표 제출 성공:', { voter: voterName, votedFor: votedPlayer });
+  } catch (error) {
+    console.error('투표 제출 실패:', error);
+    throw error;
+  }
+};
+
+// 투표 실시간 구독
+export const subscribeToVotes = (roomCode: string, callback: (votes: Record<string, string>) => void) => {
+  const votesRef = ref(database, `rooms/${roomCode}/votes`);
+  
+  const unsubscribe = onValue(votesRef, (snapshot) => {
+    const votes: Record<string, string> = {};
+    if (snapshot.exists()) {
+      snapshot.forEach((childSnapshot) => {
+        const voterName = childSnapshot.key!;
+        const votedFor = childSnapshot.val();
+        votes[voterName] = votedFor;
+      });
+    }
+    console.log('투표 데이터 수신:', votes);
+    callback(votes);
   });
   
   return unsubscribe;

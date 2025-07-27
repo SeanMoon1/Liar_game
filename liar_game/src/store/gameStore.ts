@@ -33,11 +33,13 @@ interface GameStore extends GameState {
   sendMessage: (content: string) => Promise<void>;
   selectVote: (playerName: string) => void;
   confirmVote: () => void;
+  submitVote: (votedPlayer: string) => Promise<void>;
   resetGame: () => void;
   
   // 구독 관리
   subscribeToRoom: (roomCode: string) => (() => void);
   subscribeToMessages: (roomCode: string) => (() => void);
+  subscribeToVotes: (roomCode: string) => (() => void);
   unsubscribe: () => void;
 }
 
@@ -151,10 +153,23 @@ export const useGameStore = create<GameStore>((set, get) => ({
       const liarIndex = Math.floor(Math.random() * players.length);
       const liar = players[liarIndex];
       
+      console.log('게임 시작 - 라이어 선정:', {
+        players: players.map(p => p.name),
+        selectedLiar: liar.name,
+        liarIndex
+      });
+      
       // 키워드 설정
       const topicKeywords = keywords[selectedTopic as TopicType] || keywords.general;
       const normalKeyword = topicKeywords.normal[Math.floor(Math.random() * topicKeywords.normal.length)];
       const liarKeyword = topicKeywords.liar[Math.floor(Math.random() * topicKeywords.liar.length)];
+      
+      console.log('게임 시작 - 키워드 설정:', {
+        topic: selectedTopic,
+        normalKeyword,
+        liarKeyword,
+        topicKeywords
+      });
       
       // Firebase에 게임 시작 정보 저장
       await firebaseApi.startGame(roomId, selectedTopic, liar.name, {
@@ -169,8 +184,9 @@ export const useGameStore = create<GameStore>((set, get) => ({
           topic: selectedTopic,
           keyword: isLiar ? liarKeyword : normalKeyword,
           isLiar,
-          liarKeyword
+          liarKeyword: liar.name // 실제 라이어의 이름 저장
         },
+        votes: {}, // 투표 데이터 초기화
         currentScreen: 'game'
       });
       
@@ -217,6 +233,29 @@ export const useGameStore = create<GameStore>((set, get) => ({
     set({ votes: newVotes, selectedVote: null });
   },
   
+  // 투표 제출 (Firebase)
+  submitVote: async (votedPlayer: string) => {
+    const { roomId, playerName } = get();
+    if (!roomId || !playerName) return;
+    
+    try {
+      await firebaseApi.submitVote(roomId, playerName, votedPlayer);
+      console.log('투표 제출 성공:', { voter: playerName, votedFor: votedPlayer });
+    } catch (error) {
+      console.error('투표 제출 실패:', error);
+      throw error;
+    }
+  },
+  
+  // 투표 구독
+  subscribeToVotes: (roomCode: string) => {
+    const unsubscribe = firebaseApi.subscribeToVotes(roomCode, (votes) => {
+      console.log('투표 업데이트:', votes);
+      set({ votes });
+    });
+    return unsubscribe;
+  },
+  
   // 게임 리셋
   resetGame: () => {
     set(initialState);
@@ -226,14 +265,28 @@ export const useGameStore = create<GameStore>((set, get) => ({
   subscribeToRoom: (roomCode) => {
     const unsubscribe = firebaseApi.subscribeToRoom(roomCode, (room) => {
       if (room) {
+        const currentPlayerName = get().playerName;
+        const isLiar = room.liar === currentPlayerName;
+        
+        console.log('Firebase 구독 - 방 정보 업데이트:', {
+          roomCode,
+          currentPlayerName,
+          liar: room.liar,
+          isLiar,
+          normalKeyword: room.keywords?.normal,
+          liarKeyword: room.keywords?.liar,
+          assignedKeyword: isLiar ? (room.keywords?.liar || '') : (room.keywords?.normal || '')
+        });
+        
         set({
           players: room.players,
           gameData: {
             topic: room.topic,
-            keyword: room.keywords?.normal || '',
-            isLiar: room.liar === get().playerName,
-            liarKeyword: room.keywords?.liar || ''
-          }
+            keyword: isLiar ? (room.keywords?.liar || '') : (room.keywords?.normal || ''),
+            isLiar,
+            liarKeyword: room.liar || '' // 실제 라이어의 이름 저장
+          },
+          votes: room.votes || {} // 투표 데이터 동기화
         });
         
         // 게임이 시작되면 게임 화면으로 이동
