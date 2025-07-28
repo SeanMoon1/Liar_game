@@ -102,7 +102,7 @@
 ## 📦 배포 주소
 
 * Firebase Hosting
-* `https://liar-game-f0259.web.app`
+* (https://liar-game-f0259.web.app)
 
 ---
 
