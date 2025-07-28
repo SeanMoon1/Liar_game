@@ -61,4 +61,4 @@ export interface Keywords {
   };
 }
 
-export type TopicType = 'politics' | 'economy' | 'history' | 'general' | 'culture' | 'animals' | 'plants' | 'games' | 'movies' | 'music' | 'all'; 
+export type TopicType = 'politics' | 'economy' | 'history' | 'nature' | 'culture' | 'animals' | 'plants' | 'games' | 'movies' | 'music' | 'all'; 

@@ -229,7 +229,15 @@ export const useGameStore = create<GameStore>((set, get) => ({
       });
       
       // 키워드 설정
-      const topicKeywords = keywords[selectedTopic as TopicType] || keywords.general;
+      let topicKeywords;
+      if (selectedTopic === 'all') {
+        // all 주제인 경우 랜덤으로 주제 선택
+        const { getAllKeywords } = await import('../utils/keywords');
+        topicKeywords = getAllKeywords();
+      } else {
+        topicKeywords = keywords[selectedTopic as TopicType];
+      }
+      
       const normalKeyword = topicKeywords.normal[Math.floor(Math.random() * topicKeywords.normal.length)];
       const liarKeyword = topicKeywords.liar[Math.floor(Math.random() * topicKeywords.liar.length)];
       

@@ -8,7 +8,7 @@ const TopicPage: React.FC = () => {
   const [localSelectedTopic, setLocalSelectedTopic] = useState('');
 
   const topics = [
-    'politics', 'economy', 'history', 'general', 'culture',
+    'politics', 'economy', 'history', 'nature', 'culture',
     'animals', 'plants', 'games', 'movies', 'music', 'all'
   ];
 
