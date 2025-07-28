@@ -86,16 +86,16 @@
 | 주요 화면 | 설명                      |
 | ----- | -------------------------- |
 | 홈 화면  | 게임 시작 및 방 참여 선택 |
-game_picture\시작화면.png
-game_picture\방 생성 및 참여 화면.png
+C:\Users\moona\Liar_game\game_picture\시작화면.png
+C:\Users\moona\Liar_game\game_picture\방 생성 및 참여 화면.png
 | 대기실 | 플레이어 목록 및 게임 시작 |
-game_picture\게임 대기실.png
-game_picture\주제 선택 화면.png
+C:\Users\moona\Liar_game\game_picture\게임 대기실.png
+C:\Users\moona\Liar_game\game_picture\주제 선택 화면.png
 | 게임 화면 | 실시간 채팅 및 키워드 표시 |
-game_picture\실시간 채팅 및 게임 진행화면.png
+C:\Users\moona\Liar_game\game_picture\실시간 채팅 및 게임 진행화면.png
 | 투표 화면 | 투표 시스템 및 결과 표시 |
-game_picture\투표및 결과화면(1).png
-game_picture\투표 및 결과화면(2).png
+C:\Users\moona\Liar_game\game_picture\투표및 결과화면(1).png
+C:\Users\moona\Liar_game\game_picture\투표 및 결과화면(2).png
 ---
 
 ## 🧠 회고 요약
