@@ -12,14 +12,11 @@ const GamePage: React.FC = () => {
     messages, 
     sendMessage, 
     subscribeToMessages, 
-    submitLiarGuess,
     setScreen
   } = useGameStore();
   
   const [messageInput, setMessageInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const [guessedKeyword, setGuessedKeyword] = useState('');
-  const [hasGuessed, setHasGuessed] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -92,18 +89,7 @@ const GamePage: React.FC = () => {
     }
   }, [handleSendMessage]);
 
-  const handleGuessSubmit = useCallback(async () => {
-    if (!guessedKeyword.trim()) return;
-    
-    try {
-      await submitLiarGuess(guessedKeyword.trim());
-      setHasGuessed(true);
-      alert('키워드 추측이 제출되었습니다!');
-    } catch (error) {
-      console.error('키워드 추측 제출 실패:', error);
-      alert('키워드 추측 제출에 실패했습니다.');
-    }
-  }, [guessedKeyword, submitLiarGuess]);
+
 
   if (!gameData) {
     return (
@@ -127,34 +113,7 @@ const GamePage: React.FC = () => {
           </div>
         </div>
 
-        {/* Liar Keyword Guess Section */}
-        {gameData.isLiar && !hasGuessed && (
-          <div className="liar-guess-section">
-            <h3>일반 플레이어의 키워드를 추측해보세요!</h3>
-            <p>다른 플레이어들의 대화를 듣고 일반 플레이어들이 받은 키워드를 추측해보세요.</p>
-            <div className="guess-input">
-              <Input
-                value={guessedKeyword}
-                onChange={setGuessedKeyword}
-                placeholder="추측하는 키워드를 입력하세요..."
-                maxLength={20}
-              />
-              <Button
-                variant="primary"
-                onClick={handleGuessSubmit}
-                disabled={!guessedKeyword.trim()}
-              >
-                추측 제출
-              </Button>
-            </div>
-          </div>
-        )}
 
-        {gameData.isLiar && hasGuessed && (
-          <div className="guess-complete">
-            <p>✅ 키워드 추측이 완료되었습니다!</p>
-          </div>
-        )}
 
         <div className="chat-container">
           <div className="messages">
