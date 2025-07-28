@@ -1,6 +1,6 @@
 import { initializeApp } from 'firebase/app';
-import { getDatabase, ref, set, get, push, onValue, off, query, orderByChild, limitToLast } from 'firebase/database';
-import { Player, Message, Room, Keywords } from '../types';
+import { getDatabase, ref, set, get, push, onValue, query, orderByChild, limitToLast } from 'firebase/database';
+import { Player, Message, Room } from '../types';
 
 // Firebase 설정 (환경 변수에서 가져오기)
 const firebaseConfig = {

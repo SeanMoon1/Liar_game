@@ -1,5 +1,6 @@
 import React from 'react';
 import { useGameStore } from '../store/gameStore';
+import Button from '../components/Button';
 
 const HomePage: React.FC = () => {
   const setScreen = useGameStore((state) => state.setScreen);
@@ -13,19 +14,19 @@ const HomePage: React.FC = () => {
         </p>
         
         <div className="button-group">
-          <button
-            className="btn primary"
+          <Button
+            variant="primary"
             onClick={() => setScreen('room-select')}
           >
             게임 시작하기
-          </button>
+          </Button>
           
-          <button
-            className="btn secondary"
+          <Button
+            variant="secondary"
             onClick={() => setScreen('home')}
           >
             홈으로
-          </button>
+          </Button>
         </div>
         
         <div style={{ 

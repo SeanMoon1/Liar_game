@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useGameStore } from '../store/gameStore';
-import { generateRoomId } from '../utils/keywords';
+import Button from '../components/Button';
+import Input from '../components/Input';
 
 const NicknamePage: React.FC = () => {
   const { 
@@ -72,30 +73,29 @@ const NicknamePage: React.FC = () => {
           {isCreatingRoom ? '새 방을 만들기 위한 닉네임을 입력하세요' : `방 ${joiningRoomCode}에 참가하기 위한 닉네임을 입력하세요`}
         </p>
         <div className="input-group">
-          <input
-            type="text"
+          <Input
             value={nickname}
-            onChange={(e) => setNickname(e.target.value)}
+            onChange={setNickname}
             placeholder="12글자 이내로 입력"
             maxLength={12}
             onKeyPress={handleKeyPress}
           />
-          <button
-            className="btn primary"
+          <Button
+            variant="primary"
             onClick={handleJoinGame}
             disabled={isLoading || !nickname.trim()}
           >
             {isLoading ? '입장 중...' : (isCreatingRoom ? '방 만들기' : '참가하기')}
-          </button>
+          </Button>
         </div>
         
         <div className="button-group">
-          <button
-            className="btn secondary"
+          <Button
+            variant="secondary"
             onClick={() => setScreen('room-select')}
           >
             뒤로가기
-          </button>
+          </Button>
         </div>
       </div>
     </div>

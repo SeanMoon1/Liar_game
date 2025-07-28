@@ -1,5 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useGameStore } from '../store/gameStore';
+import Button from '../components/Button';
+import Input from '../components/Input';
 
 const WaitingPage: React.FC = () => {
   const { 
@@ -31,7 +33,7 @@ const WaitingPage: React.FC = () => {
       // 구독은 subscribeToRoom 내부에서 중복 구독을 방지함
       subscribeToRoom(roomId);
     }
-  }, [roomId]); // roomId만 의존성으로 설정하여 불필요한 재구독 방지
+  }, [roomId, playerName, isHost, currentScreen, subscribeToRoom]); // 누락된 의존성들 추가
 
   // 화면 전환 감지
   useEffect(() => {
@@ -99,36 +101,36 @@ const WaitingPage: React.FC = () => {
           <p>방 코드: <strong>{roomCode}</strong></p>
           <p>방 코드를 공유하세요:</p>
           <div className="link-container">
-            <input
-              type="text"
+            <Input
               value={roomCode}
-              readOnly
+              onChange={() => {}} // readOnly이므로 빈 함수
+              disabled={true}
             />
-            <button
-              className="btn secondary"
+            <Button
+              variant="secondary"
               onClick={copyRoomCode}
             >
               복사
-            </button>
+            </Button>
           </div>
         </div>
         
         <div className="button-group">
           {isHost && (
-            <button
-              className="btn primary"
+            <Button
+              variant="primary"
               onClick={handleStartGame}
               disabled={false}
             >
               게임 시작
-            </button>
+            </Button>
           )}
-          <button
-            className="btn secondary"
+          <Button
+            variant="secondary"
             onClick={handleLeaveRoom}
           >
             방 나가기
-          </button>
+          </Button>
         </div>
       </div>
     </div>

@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { GameState, Room, Message, Player, TopicType } from '../types';
+import { GameState, Message, Player, TopicType } from '../types';
 import { keywords } from '../utils/keywords';
 import * as firebaseApi from '../api/firebase';
 

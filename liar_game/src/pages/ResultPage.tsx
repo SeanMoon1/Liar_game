@@ -1,12 +1,12 @@
 import React, { useEffect, useState } from 'react';
 import { useGameStore } from '../store/gameStore';
 import { getTopicName } from '../utils/keywords';
+import Button from '../components/Button';
 
 const ResultPage: React.FC = () => {
   const { 
     gameData, 
     players, 
-    playerName, 
     votes,
     liarGuessResult,
     resetGame, 
@@ -267,12 +267,12 @@ const ResultPage: React.FC = () => {
         </div>
 
         <div className="button-group">
-          <button className="btn primary" onClick={handleNewGame}>
+          <Button variant="primary" onClick={handleNewGame}>
             새 게임 시작
-          </button>
-          <button className="btn secondary" onClick={handleBackToHome}>
+          </Button>
+          <Button variant="secondary" onClick={handleBackToHome}>
             홈으로 돌아가기
-          </button>
+          </Button>
         </div>
       </div>
     </div>

@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useGameStore } from '../store/gameStore';
 import { getTopicName } from '../utils/keywords';
+import Button from '../components/Button';
 
 const TopicPage: React.FC = () => {
   const { setScreen, setSelectedTopic, startGame } = useGameStore();
@@ -51,19 +52,19 @@ const TopicPage: React.FC = () => {
         </div>
         
         <div className="button-group">
-          <button
-            className="btn primary"
+          <Button
+            variant="primary"
             onClick={handleStartGame}
             disabled={!localSelectedTopic}
           >
             시작하기
-          </button>
-          <button
-            className="btn secondary"
+          </Button>
+          <Button
+            variant="secondary"
             onClick={() => setScreen('waiting')}
           >
             돌아가기
-          </button>
+          </Button>
         </div>
       </div>
     </div>

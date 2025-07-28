@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useGameStore } from '../store/gameStore';
 import { getTopicName } from '../utils/keywords';
+import Button from '../components/Button';
+import Input from '../components/Input';
 
 const GamePage: React.FC = () => {
   const { 
@@ -16,7 +18,6 @@ const GamePage: React.FC = () => {
   
   const [messageInput, setMessageInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const [showGuessModal, setShowGuessModal] = useState(false);
   const [guessedKeyword, setGuessedKeyword] = useState('');
   const [hasGuessed, setHasGuessed] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -41,7 +42,7 @@ const GamePage: React.FC = () => {
       console.log('GamePage: 메시지 구독 시작');
       subscribeToMessages(roomId);
     }
-  }, [roomId]); // roomId만 의존성으로 설정
+  }, [roomId, subscribeToMessages]); // subscribeToMessages 의존성 추가
 
   // Auto-scroll messages (최적화된 스크롤)
   useEffect(() => {
@@ -97,7 +98,6 @@ const GamePage: React.FC = () => {
     try {
       await submitLiarGuess(guessedKeyword.trim());
       setHasGuessed(true);
-      setShowGuessModal(false);
       alert('키워드 추측이 제출되었습니다!');
     } catch (error) {
       console.error('키워드 추측 제출 실패:', error);
@@ -133,20 +133,19 @@ const GamePage: React.FC = () => {
             <h3>일반 플레이어의 키워드를 추측해보세요!</h3>
             <p>다른 플레이어들의 대화를 듣고 일반 플레이어들이 받은 키워드를 추측해보세요.</p>
             <div className="guess-input">
-              <input
-                type="text"
+              <Input
                 value={guessedKeyword}
-                onChange={(e) => setGuessedKeyword(e.target.value)}
+                onChange={setGuessedKeyword}
                 placeholder="추측하는 키워드를 입력하세요..."
                 maxLength={20}
               />
-              <button
-                className="btn primary"
+              <Button
+                variant="primary"
                 onClick={handleGuessSubmit}
                 disabled={!guessedKeyword.trim()}
               >
                 추측 제출
-              </button>
+              </Button>
             </div>
           </div>
         )}
@@ -183,32 +182,31 @@ const GamePage: React.FC = () => {
           </div>
 
           <div className="message-input">
-            <input
-              ref={inputRef}
-              type="text"
+            <Input
+              ref={inputRef as any}
               value={messageInput}
-              onChange={(e) => setMessageInput(e.target.value)}
+              onChange={setMessageInput}
               onKeyPress={handleKeyPress}
               placeholder="메시지를 입력하세요..."
               disabled={isLoading}
             />
-            <button
-              className="btn primary"
+            <Button
+              variant="primary"
               onClick={handleSendMessage}
               disabled={isLoading || !messageInput.trim()}
             >
               전송
-            </button>
+            </Button>
           </div>
         </div>
 
         <div className="button-group">
-          <button
-            className="btn secondary"
+          <Button
+            variant="secondary"
             onClick={() => setScreen('vote')}
           >
             투표하기
-          </button>
+          </Button>
         </div>
       </div>
     </div>
